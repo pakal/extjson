@@ -20,7 +20,6 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 """
 
-
 from __future__ import annotations
 
 import binascii
@@ -28,7 +27,6 @@ import datetime
 import json
 import math
 import sys
-
 import uuid
 from typing import (
     Any,
@@ -42,7 +40,9 @@ try:
     from decimal import Decimal
 except ImportError:
     # E.g. on Micropython
-    class _FakeDecimal: pass
+    class _FakeDecimal:
+        pass
+
     Decimal = _FakeDecimal
 
 
@@ -50,13 +50,12 @@ _INT32_MAX = 2**31
 
 UTF8_ENCODING = "utf8"
 
-IS_MICROPYTHON = (sys.implementation.name == "micropython")
+IS_MICROPYTHON = sys.implementation.name == "micropython"
 
 
 # Only these two binary-data subtypes are supported
 BINARY_SUBTYPE = 0
 UUID_SUBTYPE = 4
-
 
 
 # NOTE: we can't provide a "default" handler to use with json.dumps(),
@@ -68,7 +67,7 @@ def extjson_decoder_object_hook(obj: dict) -> Any:
     return _convert_primitive_from_extjson_dict(obj)
 
 
-def convert_to_extjson(obj: Any, canonical: bool=False) -> Any:
+def convert_to_extjson(obj: Any, canonical: bool = False) -> Any:
     """Recursive helper method that converts BSON types so they can be
     converted into json.
     """
@@ -131,8 +130,7 @@ def _convert_primitive_from_extjson_dict(ext_obj_dict: Mapping[str, Any]) -> Any
 
 
 def _encode_canonical_binary(data: bytes, subtype: int) -> Any:
-    return {"$binary": {"base64": _simple_b64encode(data).decode('ascii'),
-                        "subType": "%02x" % subtype}}
+    return {"$binary": {"base64": _simple_b64encode(data).decode("ascii"), "subType": "%02x" % subtype}}
 
 
 def _encode_int(obj: int, canonical: bool) -> Any:
@@ -175,9 +173,7 @@ def _encode_datetime(obj: datetime.datetime, canonical: bool) -> dict:
     timespec = "milliseconds" if obj.microsecond != 0 else "seconds"
     dts = obj.isoformat(sep="T", timespec=timespec)
     dts = dts.replace("+00:00", "Z")  # We ASSUME that 0-offset means UTC...
-    return {
-        "$date": dts
-    }
+    return {"$date": dts}
 
 
 def _encode_bytes(obj: bytes, canonical: bool) -> dict:
@@ -222,7 +218,7 @@ def _parse_canonical_binary(doc: Any) -> Union[bytes, uuid.UUID]:
     if not isinstance(subtype, str) or len(subtype) > 2:
         raise TypeError(f"$binary subType must be a string with at most 2 characters: {doc}")
 
-    data = _simple_b64decode(b64.encode('ascii'))
+    data = _simple_b64decode(b64.encode("ascii"))
     return _get_as_binary_or_uuid(data, int(subtype, 16))
 
 
@@ -234,9 +230,7 @@ def _get_as_binary_or_uuid(data: Any, subtype: int) -> Union[bytes, uuid.UUID]:
     return data
 
 
-def _parse_canonical_datetime(
-    doc: Any
-) -> datetime.datetime:
+def _parse_canonical_datetime(doc: Any) -> datetime.datetime:
     """Decode a JSON datetime to python datetime.datetime.
 
     Canonical dates are always returned as UTC, whereas isoformat strings are
@@ -329,8 +323,7 @@ def _millis_to_utc_datetime(
 
 
 def _simple_b64encode(s):
-    """Encode the bytes-like object s using Base64 and return a bytes object.
-    """
+    """Encode the bytes-like object s using Base64 and return a bytes object."""
     encoded = binascii.b2a_base64(s, newline=False)
     return encoded
 

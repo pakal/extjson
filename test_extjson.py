@@ -1,23 +1,35 @@
-
-import  os, sys, pytz
-import uuid
-import math
 import copy
 import decimal
+import math
+import os
 import random
-from pprint import pprint
-from typing import Tuple, Type, Any
-from decimal import Decimal
+import sys
+import uuid
 from datetime import datetime, timedelta, timezone
+from decimal import Decimal
+from json import dumps as original_dumps
+from json import loads as original_loads
+from pprint import pprint
+from typing import Any, Tuple, Type
 
 import pytest
+import pytz
 
 sys.path.append(os.path.dirname(__file__))
 
-from extjson import (convert_to_extjson, convert_from_extjson, extjson_decoder_object_hook, load_from_json_bytes,
-                     load_from_json_str, load_from_json_file, dump_to_json_str, dump_to_json_bytes, dump_to_json_file,
-                     dumps, loads)
-
+from extjson import (
+    convert_from_extjson,
+    convert_to_extjson,
+    dump_to_json_bytes,
+    dump_to_json_file,
+    dump_to_json_str,
+    dumps,
+    extjson_decoder_object_hook,
+    load_from_json_bytes,
+    load_from_json_file,
+    load_from_json_str,
+    loads,
+)
 
 
 def _random_bool():
@@ -30,128 +42,161 @@ EXAMPLE_NATIVE_DATA_TREE = {
     "my_strs": ["", "abc", "hêll@\nällz"],
     "my_nans": [math.nan, Decimal("NaN")],
     "my_ints": [-197282632562525242626256252625, -11, 0, 27627262727, 273262853882627266372772373772646252624542543],
-    "my_floats": [-math.inf, -138262872.27267262123456, -20.001, -17.0, -0.0, 0.0, 2.0, 411.1234567890000002, 2276372572.15, math.inf],
-    "my_decimals": [Decimal("-Infinity"), Decimal("-138262872.272672622927825262262426245242524"), Decimal("-22.001"),
-                    Decimal("-3.0"), Decimal("-0.0"), Decimal("0.0"), Decimal("4.0"), Decimal("282872.2"), Decimal("2276372572.152926382527252762522265262"), Decimal("Infinity")],
-    "my_dates": [datetime(1, 1, 1, tzinfo=pytz.utc),
-                 datetime(2025, 10, 22, 2, 3, 4, 543000,
-                          tzinfo=pytz.timezone('Pacific/Johnston'))],
+    "my_floats": [
+        -math.inf,
+        -138262872.27267262123456,
+        -20.001,
+        -17.0,
+        -0.0,
+        0.0,
+        2.0,
+        411.1234567890000002,
+        2276372572.15,
+        math.inf,
+    ],
+    "my_decimals": [
+        Decimal("-Infinity"),
+        Decimal("-138262872.272672622927825262262426245242524"),
+        Decimal("-22.001"),
+        Decimal("-3.0"),
+        Decimal("-0.0"),
+        Decimal("0.0"),
+        Decimal("4.0"),
+        Decimal("282872.2"),
+        Decimal("2276372572.152926382527252762522265262"),
+        Decimal("Infinity"),
+    ],
+    "my_dates": [
+        datetime(1, 1, 1, tzinfo=pytz.utc),
+        datetime(2025, 10, 22, 2, 3, 4, 543000, tzinfo=pytz.timezone("Pacific/Johnston")),
+    ],
     "my_uids": [uuid.UUID("29b91799-7249-4266-a853-80123d7fd684"), uuid.UUID("29b91799-7249-4266-a853-80123d7fd684")],
     "my_bytes": [b"", b"hello world", b"\x00\x01\x02\x03\x04\x05\xfa\xfb\xfc\xfd\xfe\xff"],
 }
 
-EXAMPLE_EXTJSON_DATA_TREE_CANONICAL = {'my_bools': {'KO': False, 'OK': True},
-                         'my_bytes': [{'$binary': {'base64': '', 'subType': '00'}},
-                                      {'$binary': {'base64': 'aGVsbG8gd29ybGQ=', 'subType': '00'}},
-                                      {'$binary': {'base64': 'AAECAwQF+vv8/f7/', 'subType': '00'}}],
-                         'my_dates': [{'$date': {'$numberLong': '-62135596800000'}},
-                                      {'$date': {'$numberLong': '1761136444543'}}],
-                         'my_nans': [{'$numberDouble': 'NaN'}, {'$numberDecimal': 'NaN'}],  # Never equal to anything
-                         'my_floats': [{'$numberDouble': '-Infinity'},
-                                       {'$numberDouble': '-138262872.27267262'},  # TRUNCATED by Python
-                                       {'$numberDouble': '-20.001'},
-                                       {'$numberDouble': '-17.0'},
-                                       {'$numberDouble': '-0.0'},
-                                       {'$numberDouble': '0.0'},
-                                       {'$numberDouble': '2.0'},
-                                       {'$numberDouble': '411.123456789'},
-                                       {'$numberDouble': '2276372572.15'},  # TRUNCATED by Python
-                                       {'$numberDouble': 'Infinity'}],
-                         'my_decimals': [
-                             {
-                                 '$numberDecimal': '-Infinity',
-                             },
-                             {
-                                 '$numberDecimal': '-138262872.272672622927825262262426245242524',
-                             },
-                             {
-                                 '$numberDecimal': '-22.001',
-                             },
-                             {
-                                 '$numberDecimal': '-3.0',
-                             },
-                             {
-                                 '$numberDecimal': '-0.0',
-                             },
-                             {
-                                 '$numberDecimal': '0.0',
-                             },
-                             {
-                                 '$numberDecimal': '4.0',
-                             },
-                             {
-                                 '$numberDecimal': '282872.2',
-                             },
-                             {
-                                 '$numberDecimal': '2276372572.152926382527252762522265262',
-                             },
-                             {
-                                 '$numberDecimal': 'Infinity',
-                             }],
-
-                         'my_ints': [{'$numberLong': '-197282632562525242626256252625'},
-                                     {'$numberInt': '-11'},
-                                     {'$numberInt': '0'},
-                                     {'$numberLong': '27627262727'},
-                                     {'$numberLong': '273262853882627266372772373772646252624542543'}],
-                         'my_none': None,
-                         'my_strs': ['', 'abc', 'hêll@\nällz'],
-                         'my_uids': [{'$binary': {'base64': 'KbkXmXJJQmaoU4ASPX/WhA==',
-                                                  'subType': '04'}},
-                                     {'$binary': {'base64': 'KbkXmXJJQmaoU4ASPX/WhA==',
-                                                  'subType': '04'}}]}
+EXAMPLE_EXTJSON_DATA_TREE_CANONICAL = {
+    "my_bools": {"KO": False, "OK": True},
+    "my_bytes": [
+        {"$binary": {"base64": "", "subType": "00"}},
+        {"$binary": {"base64": "aGVsbG8gd29ybGQ=", "subType": "00"}},
+        {"$binary": {"base64": "AAECAwQF+vv8/f7/", "subType": "00"}},
+    ],
+    "my_dates": [{"$date": {"$numberLong": "-62135596800000"}}, {"$date": {"$numberLong": "1761136444543"}}],
+    "my_nans": [{"$numberDouble": "NaN"}, {"$numberDecimal": "NaN"}],  # Never equal to anything
+    "my_floats": [
+        {"$numberDouble": "-Infinity"},
+        {"$numberDouble": "-138262872.27267262"},  # TRUNCATED by Python
+        {"$numberDouble": "-20.001"},
+        {"$numberDouble": "-17.0"},
+        {"$numberDouble": "-0.0"},
+        {"$numberDouble": "0.0"},
+        {"$numberDouble": "2.0"},
+        {"$numberDouble": "411.123456789"},
+        {"$numberDouble": "2276372572.15"},  # TRUNCATED by Python
+        {"$numberDouble": "Infinity"},
+    ],
+    "my_decimals": [
+        {
+            "$numberDecimal": "-Infinity",
+        },
+        {
+            "$numberDecimal": "-138262872.272672622927825262262426245242524",
+        },
+        {
+            "$numberDecimal": "-22.001",
+        },
+        {
+            "$numberDecimal": "-3.0",
+        },
+        {
+            "$numberDecimal": "-0.0",
+        },
+        {
+            "$numberDecimal": "0.0",
+        },
+        {
+            "$numberDecimal": "4.0",
+        },
+        {
+            "$numberDecimal": "282872.2",
+        },
+        {
+            "$numberDecimal": "2276372572.152926382527252762522265262",
+        },
+        {
+            "$numberDecimal": "Infinity",
+        },
+    ],
+    "my_ints": [
+        {"$numberLong": "-197282632562525242626256252625"},
+        {"$numberInt": "-11"},
+        {"$numberInt": "0"},
+        {"$numberLong": "27627262727"},
+        {"$numberLong": "273262853882627266372772373772646252624542543"},
+    ],
+    "my_none": None,
+    "my_strs": ["", "abc", "hêll@\nällz"],
+    "my_uids": [
+        {"$binary": {"base64": "KbkXmXJJQmaoU4ASPX/WhA==", "subType": "04"}},
+        {"$binary": {"base64": "KbkXmXJJQmaoU4ASPX/WhA==", "subType": "04"}},
+    ],
+}
 
 
 EXAMPLE_EXTJSON_DATA_TREE_RELAXED = {
-         'my_bools': {'KO': False, 'OK': True},
-         'my_bytes': [{'$binary': {'base64': '', 'subType': '00'}},  # Always canonical for bytes
-                      {'$binary': {'base64': 'aGVsbG8gd29ybGQ=', 'subType': '00'}},
-                      {'$binary': {'base64': 'AAECAwQF+vv8/f7/', 'subType': '00'}}],
-         'my_dates': [{'$date': '0001-01-01T00:00:00Z'},
-                      {'$date': '2025-10-22T02:03:04.543-10:31'}],
-         'my_decimals': [{'$numberDecimal': '-Infinity'},
-                         {'$numberDecimal': '-138262872.272672622927825262262426245242524'},
-                         {'$numberDecimal': '-22.001'},
-                         {'$numberDecimal': '-3.0'},
-                         {'$numberDecimal': '-0.0'},
-                         {'$numberDecimal': '0.0'},
-                         {'$numberDecimal': '4.0'},
-                         {'$numberDecimal': '282872.2'},
-                         {'$numberDecimal': '2276372572.152926382527252762522265262'},
-                         {'$numberDecimal': 'Infinity'}],
-         'my_floats': [{'$numberDouble': '-Infinity'},
-                       -138262872.27267262,
-                       -20.001,
-                       -17.0,
-                       -0.0,
-                       0.0,
-                       2.0,
-                       411.123456789,
-                       2276372572.15,
-                       {'$numberDouble': 'Infinity'}],
-         'my_ints': [-197282632562525242626256252625,
-                     -11,
-                     0,
-                     27627262727,
-                     273262853882627266372772373772646252624542543],
-        'my_nans': [{'$numberDouble': 'NaN'}, {'$numberDecimal': 'NaN'}],  # Never equal to anything
-         'my_none': None,
-         'my_strs': ['', 'abc', 'hêll@\nällz'],
-         'my_uids': [{'$uuid': '29b9179972494266a85380123d7fd684'},
-                     {'$uuid': '29b9179972494266a85380123d7fd684'}]}
+    "my_bools": {"KO": False, "OK": True},
+    "my_bytes": [
+        {"$binary": {"base64": "", "subType": "00"}},  # Always canonical for bytes
+        {"$binary": {"base64": "aGVsbG8gd29ybGQ=", "subType": "00"}},
+        {"$binary": {"base64": "AAECAwQF+vv8/f7/", "subType": "00"}},
+    ],
+    "my_dates": [{"$date": "0001-01-01T00:00:00Z"}, {"$date": "2025-10-22T02:03:04.543-10:31"}],
+    "my_decimals": [
+        {"$numberDecimal": "-Infinity"},
+        {"$numberDecimal": "-138262872.272672622927825262262426245242524"},
+        {"$numberDecimal": "-22.001"},
+        {"$numberDecimal": "-3.0"},
+        {"$numberDecimal": "-0.0"},
+        {"$numberDecimal": "0.0"},
+        {"$numberDecimal": "4.0"},
+        {"$numberDecimal": "282872.2"},
+        {"$numberDecimal": "2276372572.152926382527252762522265262"},
+        {"$numberDecimal": "Infinity"},
+    ],
+    "my_floats": [
+        {"$numberDouble": "-Infinity"},
+        -138262872.27267262,
+        -20.001,
+        -17.0,
+        -0.0,
+        0.0,
+        2.0,
+        411.123456789,
+        2276372572.15,
+        {"$numberDouble": "Infinity"},
+    ],
+    "my_ints": [-197282632562525242626256252625, -11, 0, 27627262727, 273262853882627266372772373772646252624542543],
+    "my_nans": [{"$numberDouble": "NaN"}, {"$numberDecimal": "NaN"}],  # Never equal to anything
+    "my_none": None,
+    "my_strs": ["", "abc", "hêll@\nällz"],
+    "my_uids": [{"$uuid": "29b9179972494266a85380123d7fd684"}, {"$uuid": "29b9179972494266a85380123d7fd684"}],
+}
+
 
 def test_extended_json_tree_encode_decode_in_canonical_mode():
 
     example_native_data_tree = copy.deepcopy(EXAMPLE_NATIVE_DATA_TREE)
 
     ext_json = convert_to_extjson(example_native_data_tree, canonical=True)
-    print("EXTJSON DUMP CANONICAL:") ; pprint(ext_json)
+    print("EXTJSON DUMP CANONICAL:")
+    pprint(ext_json)
 
     expected_ext_json = EXAMPLE_EXTJSON_DATA_TREE_CANONICAL
     assert ext_json == expected_ext_json
 
     decoded_native_data_tree = convert_from_extjson(ext_json)
-    print("DECODED NATIVE DUMP:") ; pprint(decoded_native_data_tree)
+    print("DECODED NATIVE DUMP:")
+    pprint(decoded_native_data_tree)
 
     assert decoded_native_data_tree != example_native_data_tree  # Some little incompatibilities exist
     assert all(math.isnan(x) for x in decoded_native_data_tree["my_nans"])
@@ -159,94 +204,20 @@ def test_extended_json_tree_encode_decode_in_canonical_mode():
     del example_native_data_tree["my_nans"]
 
     assert decoded_native_data_tree == {
-         'my_bools': {'KO': False, 'OK': True},
-         'my_bytes': [b'',
-                      b'hello world',
-                      b'\x00\x01\x02\x03\x04\x05\xfa\xfb\xfc\xfd\xfe\xff'],
-         'my_dates': [datetime(1, 1, 1, 0, 0, tzinfo=pytz.utc),
-                      datetime(2025, 10, 22, 12, 34, 4, 543000,
-                               tzinfo=pytz.utc)],  # Timezone was changed!
-
-         'my_ints': [-197282632562525242626256252625,
-                     -11,
-                     0,
-                     27627262727,
-                     273262853882627266372772373772646252624542543],
-        'my_floats': [-math.inf,
-                      -138262872.27267262,
-                      -20.001,
-                      -17.0,
-                      -0.0,
-                      0.0,
-                      2.0,
-                      411.123456789,
-                      2276372572.15,
-                      math.inf],
-        'my_decimals': [
-                Decimal('-Infinity'),
-                Decimal('-138262872.272672622927825262262426245242524'),
-                Decimal('-22.001'),
-                Decimal('-3.0'),
-                Decimal('-0.0'),
-                Decimal('0.0'),
-                Decimal('4.0'),
-                Decimal('282872.2'),
-                Decimal('2276372572.152926382527252762522265262'),
-                Decimal('Infinity')],
-
-         'my_none': None,
-         'my_strs': ['', 'abc', 'hêll@\nällz'],
-         'my_uids': [uuid.UUID('29b91799-7249-4266-a853-80123d7fd684'),
-                     uuid.UUID('29b91799-7249-4266-a853-80123d7fd684')]}
-
-    assert decoded_native_data_tree == example_native_data_tree  # ROUND-TRIP EQUALITY AFTER REMOVING NaN
-
-
-def test_extended_json_tree_encode_decode_in_relaxed_mode():
-
-    example_native_data_tree = copy.deepcopy(EXAMPLE_NATIVE_DATA_TREE)
-
-    ext_json = convert_to_extjson(example_native_data_tree, canonical=False)
-    print("EXTJSON DUMP RELAXED:") ; pprint(ext_json)
-
-    expected_ext_json = EXAMPLE_EXTJSON_DATA_TREE_RELAXED
-    assert ext_json == expected_ext_json
-
-    decoded_native_data_tree = convert_from_extjson(ext_json)
-    print("DECODED NATIVE DUMP:") ; pprint(decoded_native_data_tree)
-
-    assert decoded_native_data_tree != example_native_data_tree  # Some little incompatibilities exist
-    assert all(math.isnan(x) for x in decoded_native_data_tree["my_nans"])
-
-    del decoded_native_data_tree["my_nans"]
-    del example_native_data_tree["my_nans"]
-
-    assert decoded_native_data_tree == {
-        'my_bools': {
-            'KO': False,
-            'OK': True,
-        },
-        'my_bytes': [
-            b'',
-            b'hello world',
-            b'\x00\x01\x02\x03\x04\x05\xfa\xfb\xfc\xfd\xfe\xff',
+        "my_bools": {"KO": False, "OK": True},
+        "my_bytes": [b"", b"hello world", b"\x00\x01\x02\x03\x04\x05\xfa\xfb\xfc\xfd\xfe\xff"],
+        "my_dates": [
+            datetime(1, 1, 1, 0, 0, tzinfo=pytz.utc),
+            datetime(2025, 10, 22, 12, 34, 4, 543000, tzinfo=pytz.utc),
+        ],  # Timezone was changed!
+        "my_ints": [
+            -197282632562525242626256252625,
+            -11,
+            0,
+            27627262727,
+            273262853882627266372772373772646252624542543,
         ],
-        'my_dates': [datetime(1, 1, 1, 0, 0, tzinfo=pytz.utc),
-                     datetime(2025, 10, 22, 12, 34, 4, 543000,
-                              tzinfo=pytz.utc)],  # Equivalent
-        'my_decimals': [
-            Decimal('-Infinity'),
-            Decimal('-138262872.272672622927825262262426245242524'),
-            Decimal('-22.001'),
-            Decimal('-3.0'),
-            Decimal('-0.0'),
-            Decimal('0.0'),
-            Decimal('4.0'),
-            Decimal('282872.2'),
-            Decimal('2276372572.152926382527252762522265262'),
-            Decimal('Infinity'),
-        ],
-        'my_floats': [
+        "my_floats": [
             -math.inf,
             -138262872.27267262,
             -20.001,
@@ -258,23 +229,104 @@ def test_extended_json_tree_encode_decode_in_relaxed_mode():
             2276372572.15,
             math.inf,
         ],
-        'my_ints': [
+        "my_decimals": [
+            Decimal("-Infinity"),
+            Decimal("-138262872.272672622927825262262426245242524"),
+            Decimal("-22.001"),
+            Decimal("-3.0"),
+            Decimal("-0.0"),
+            Decimal("0.0"),
+            Decimal("4.0"),
+            Decimal("282872.2"),
+            Decimal("2276372572.152926382527252762522265262"),
+            Decimal("Infinity"),
+        ],
+        "my_none": None,
+        "my_strs": ["", "abc", "hêll@\nällz"],
+        "my_uids": [
+            uuid.UUID("29b91799-7249-4266-a853-80123d7fd684"),
+            uuid.UUID("29b91799-7249-4266-a853-80123d7fd684"),
+        ],
+    }
+
+    assert decoded_native_data_tree == example_native_data_tree  # ROUND-TRIP EQUALITY AFTER REMOVING NaN
+
+
+def test_extended_json_tree_encode_decode_in_relaxed_mode():
+
+    example_native_data_tree = copy.deepcopy(EXAMPLE_NATIVE_DATA_TREE)
+
+    ext_json = convert_to_extjson(example_native_data_tree, canonical=False)
+    print("EXTJSON DUMP RELAXED:")
+    pprint(ext_json)
+
+    expected_ext_json = EXAMPLE_EXTJSON_DATA_TREE_RELAXED
+    assert ext_json == expected_ext_json
+
+    decoded_native_data_tree = convert_from_extjson(ext_json)
+    print("DECODED NATIVE DUMP:")
+    pprint(decoded_native_data_tree)
+
+    assert decoded_native_data_tree != example_native_data_tree  # Some little incompatibilities exist
+    assert all(math.isnan(x) for x in decoded_native_data_tree["my_nans"])
+
+    del decoded_native_data_tree["my_nans"]
+    del example_native_data_tree["my_nans"]
+
+    assert decoded_native_data_tree == {
+        "my_bools": {
+            "KO": False,
+            "OK": True,
+        },
+        "my_bytes": [
+            b"",
+            b"hello world",
+            b"\x00\x01\x02\x03\x04\x05\xfa\xfb\xfc\xfd\xfe\xff",
+        ],
+        "my_dates": [
+            datetime(1, 1, 1, 0, 0, tzinfo=pytz.utc),
+            datetime(2025, 10, 22, 12, 34, 4, 543000, tzinfo=pytz.utc),
+        ],  # Equivalent
+        "my_decimals": [
+            Decimal("-Infinity"),
+            Decimal("-138262872.272672622927825262262426245242524"),
+            Decimal("-22.001"),
+            Decimal("-3.0"),
+            Decimal("-0.0"),
+            Decimal("0.0"),
+            Decimal("4.0"),
+            Decimal("282872.2"),
+            Decimal("2276372572.152926382527252762522265262"),
+            Decimal("Infinity"),
+        ],
+        "my_floats": [
+            -math.inf,
+            -138262872.27267262,
+            -20.001,
+            -17.0,
+            -0.0,
+            0.0,
+            2.0,
+            411.123456789,
+            2276372572.15,
+            math.inf,
+        ],
+        "my_ints": [
             -197282632562525242626256252625,
             -11,
             0,
             27627262727,
             273262853882627266372772373772646252624542543,
         ],
-        'my_none': None,
-        'my_strs': [
-            '',
-            'abc',
-            'hêll@\n'
-            'ällz',
+        "my_none": None,
+        "my_strs": [
+            "",
+            "abc",
+            "hêll@\nällz",
         ],
-        'my_uids': [
-            uuid.UUID('29b91799-7249-4266-a853-80123d7fd684'),
-            uuid.UUID('29b91799-7249-4266-a853-80123d7fd684'),
+        "my_uids": [
+            uuid.UUID("29b91799-7249-4266-a853-80123d7fd684"),
+            uuid.UUID("29b91799-7249-4266-a853-80123d7fd684"),
         ],
     }
 
@@ -307,7 +359,6 @@ def test_extended_json_primitive_encode_decode_in_all_modes():
                 _test_primitive_encode_decode(value, canonical=canonical_mode)
 
     assert operations > 20, operations
-
 
 
 def test_extended_json_subclass_encode_decode():
@@ -349,9 +400,9 @@ def test_extended_json_specific_cases():
     assert convert_from_extjson({"$unrecognized": 33}) == {"$unrecognized": 33}
 
     # Handle tuple objects as lists, since JSON does not have a tuple type
-    _tuple_obj = (1, b'abc')
+    _tuple_obj = (1, b"abc")
     _tuple_obj_extjson = convert_to_extjson(_tuple_obj)
-    assert _tuple_obj_extjson == [1, {'$binary': {'base64': 'YWJj', 'subType': '00'}}]
+    assert _tuple_obj_extjson == [1, {"$binary": {"base64": "YWJj", "subType": "00"}}]
     assert convert_from_extjson(_tuple_obj_extjson) == list(_tuple_obj)
 
     # If conversion is impossible, we just let the object as is
@@ -361,8 +412,7 @@ def test_extended_json_specific_cases():
 
     # Check that naive datetimes are rejected
     with pytest.raises(TypeError, match="naive"):
-        convert_to_extjson(datetime(2024, 1, 16, 0, 0, 0, 0),
-                           canonical=_random_bool())
+        convert_to_extjson(datetime(2024, 1, 16, 0, 0, 0, 0), canonical=_random_bool())
 
     # Check the handling of timezones in roundtrips
     utc_date = datetime(1876, 12, 18, microsecond=11000, tzinfo=pytz.utc)
@@ -370,8 +420,7 @@ def test_extended_json_specific_cases():
     assert utc_date_2 == utc_date
     assert utc_date_2.tzinfo == timezone.utc
 
-    other_date = datetime(2022, 2, 1, 22, 23, 34, 26000,
-                          tzinfo=pytz.timezone('Pacific/Johnston'))
+    other_date = datetime(2022, 2, 1, 22, 23, 34, 26000, tzinfo=pytz.timezone("Pacific/Johnston"))
     other_date_2 = convert_from_extjson(convert_to_extjson(other_date, canonical=True))
     assert other_date_2 == other_date
     assert other_date_2.tzinfo == timezone.utc  # CHANGED in canonical mode
@@ -382,7 +431,6 @@ def test_extended_json_specific_cases():
 
     # Check that microseconds are not entirely preserved in roundtrips
     for canonical_mode in [True, False]:
-
         # Negative timestamp compared to EPOCH
         precise_date = datetime(1876, 12, 18, microsecond=16843, tzinfo=pytz.utc)
         _extjson = convert_to_extjson(precise_date, canonical=canonical_mode)
@@ -403,30 +451,35 @@ def test_extended_json_undecodable_payloads():
     # The presence of other keys blocks extjson decoding
     skipped_payloads = [
         {"$date": "something", "somekey": True},
-         {"$binary": "something","somekey": True},
-          {"$uuid":  "something","somekey": True},
-           {"$undefined": "something","somekey": True},
-            {"$numberInt": "something","somekey": True},
-             {"$numberLong": "something","somekey": True},
-              {"$numberDouble": "something","somekey": True},
-               {"$numberDecimal": "something","somekey": True},
+        {"$binary": "something", "somekey": True},
+        {"$uuid": "something", "somekey": True},
+        {"$undefined": "something", "somekey": True},
+        {"$numberInt": "something", "somekey": True},
+        {"$numberLong": "something", "somekey": True},
+        {"$numberDouble": "something", "somekey": True},
+        {"$numberDecimal": "something", "somekey": True},
     ]
     for skipped_payload in skipped_payloads:
         assert convert_to_extjson(skipped_payload, canonical=_random_bool()) == skipped_payload
 
     broken_payloads = [
         {"$date": 3.12},
-         {"$binary": 42},
-         {"$binary": {"badkey": True}},
-         {"$binary": {"base64": "736", "subType": "00", "badkey": True}},
-         {"$binary": {"base64": 333, "subType": "00",}},
-         {"$binary": {"base64": "736", "subType": "002"}},
-         {"$binary": 42},
-          {"$uuid": 343},
-            {"$numberInt": 3343},
-             {"$numberLong": 272727},
-              {"$numberDouble": 1337.3},
-               {"$numberDecimal": 10.0},
+        {"$binary": 42},
+        {"$binary": {"badkey": True}},
+        {"$binary": {"base64": "736", "subType": "00", "badkey": True}},
+        {
+            "$binary": {
+                "base64": 333,
+                "subType": "00",
+            }
+        },
+        {"$binary": {"base64": "736", "subType": "002"}},
+        {"$binary": 42},
+        {"$uuid": 343},
+        {"$numberInt": 3343},
+        {"$numberLong": 272727},
+        {"$numberDouble": 1337.3},
+        {"$numberDecimal": 10.0},
     ]
     for broken_payload in broken_payloads:
         with pytest.raises(TypeError, match="must be"):
@@ -434,14 +487,21 @@ def test_extended_json_undecodable_payloads():
 
     # Ensure that subTypes of binary are handled properly
     with pytest.raises(TypeError, match="subtype"):
-        convert_from_extjson({"$binary": {"base64": "QUI=", "subType": "01",}},)
+        convert_from_extjson(
+            {
+                "$binary": {
+                    "base64": "QUI=",
+                    "subType": "01",
+                }
+            },
+        )
 
 
 def test_extended_json_decode_invalid_date():
 
     for valid_extjson in [
-        {"dt": { "$date" : "1970-01-01T01:00Z"}},
-        {"dt": { "$date" : "1970-01-01T01+02:00"}},
+        {"dt": {"$date": "1970-01-01T01:00Z"}},
+        {"dt": {"$date": "1970-01-01T01+02:00"}},
     ]:
         res = convert_from_extjson(valid_extjson)
         print("VALID DATE PARSED:", res)
@@ -449,29 +509,28 @@ def test_extended_json_decode_invalid_date():
         assert res["dt"].tzinfo  # AWARE datetime
 
     for invalid_extjson_format in [
-        {"dt": { "$date" : "1970-01-01T00:00:"}},
-        {"dt": { "$date" : "1970-01-01T01:"}},
-        {"dt": { "$date" : "1970-01-01T"}},
-        {"dt": { "$date" : "1970-01-01T"}},
-        {"dt": { "$date" : "1970-01-"}},
-        {"dt": { "$date" : "1970-"}},
-        {"dt": { "$date" : "1970-01"}},
-        {"dt": { "$date" : "1970"}},
-        {"dt": { "$date" : ""}},
+        {"dt": {"$date": "1970-01-01T00:00:"}},
+        {"dt": {"$date": "1970-01-01T01:"}},
+        {"dt": {"$date": "1970-01-01T"}},
+        {"dt": {"$date": "1970-01-01T"}},
+        {"dt": {"$date": "1970-01-"}},
+        {"dt": {"$date": "1970-"}},
+        {"dt": {"$date": "1970-01"}},
+        {"dt": {"$date": "1970"}},
+        {"dt": {"$date": ""}},
     ]:
         with pytest.raises(ValueError, match="isoformat"):
             res = convert_from_extjson(invalid_extjson_format)
             print("INVALID DATE PARSED:", res)
 
     for invalid_extjson_timezone in [
-        {"dt": { "$date" : "1970-01-01T01:00:22"}},
-        {"dt": { "$date" : "1970-01-01T01:00"}},
-        {"dt": { "$date" : "1970-01-01+01:00"}},  # Ignored TZ
+        {"dt": {"$date": "1970-01-01T01:00:22"}},
+        {"dt": {"$date": "1970-01-01T01:00"}},
+        {"dt": {"$date": "1970-01-01+01:00"}},  # Ignored TZ
     ]:
         with pytest.raises(TypeError, match="naive"):
             res = convert_from_extjson(invalid_extjson_timezone)
             print("INVALID DATE PARSED:", res)
-
 
 
 def test_json_serialization_high_level_utilities(tmp_path):
@@ -483,7 +542,10 @@ def test_json_serialization_high_level_utilities(tmp_path):
     serialized_str = dump_to_json_str(payload, canonical=True)
     assert (
         serialized_str  # Keys are sorted
-        == r'{"a": "h\u00eallo", "b": {"$binary": {"base64": "eHl6", "subType": "00"}}, "c": {"$binary": {"base64": "fAsY9fQQToOSY7OMIyjlFg==", "subType": "04"}}}'
+        == (
+            r'{"a": "h\u00eallo", "b": {"$binary": {"base64": "eHl6", "subType": "00"}}, '
+            r'"c": {"$binary": {"base64": "fAsY9fQQToOSY7OMIyjlFg==", "subType": "04"}}}'
+        )
     )
     deserialized = load_from_json_str(serialized_str)
     assert deserialized == payload
@@ -491,23 +553,26 @@ def test_json_serialization_high_level_utilities(tmp_path):
     serialized_str = dump_to_json_str(payload, canonical=False)
     assert (
         serialized_str  # Keys are sorted
-        == r'{"a": "h\u00eallo", "b": {"$binary": {"base64": "eHl6", "subType": "00"}}, "c": {"$uuid": "7c0b18f5f4104e839263b38c2328e516"}}'
+        == (
+            r'{"a": "h\u00eallo", "b": {"$binary": {"base64": "eHl6", "subType": "00"}}, '
+            r'"c": {"$uuid": "7c0b18f5f4104e839263b38c2328e516"}}'
+        )
     )
     deserialized = load_from_json_str(serialized_str)
     assert deserialized == payload
 
     serialized_str = dump_to_json_str(payload, canonical=True, ensure_ascii=False)  # Json arguments well propagated
-    assert (
-        serialized_str
-        == r'{"a": "hêllo", "b": {"$binary": {"base64": "eHl6", "subType": "00"}}, "c": {"$binary": {"base64": "fAsY9fQQToOSY7OMIyjlFg==", "subType": "04"}}}'
+    assert serialized_str == (
+        r'{"a": "hêllo", "b": {"$binary": {"base64": "eHl6", "subType": "00"}}, '
+        r'"c": {"$binary": {"base64": "fAsY9fQQToOSY7OMIyjlFg==", "subType": "04"}}}'
     )
     deserialized = load_from_json_str(serialized_str)
     assert deserialized == payload
 
     serialized_str = dump_to_json_str(payload, canonical=False, ensure_ascii=False)  # Json arguments well propagated
-    assert (
-        serialized_str
-        == r'{"a": "hêllo", "b": {"$binary": {"base64": "eHl6", "subType": "00"}}, "c": {"$uuid": "7c0b18f5f4104e839263b38c2328e516"}}'
+    assert serialized_str == (
+        r'{"a": "hêllo", "b": {"$binary": {"base64": "eHl6", "subType": "00"}}, '
+        r'"c": {"$uuid": "7c0b18f5f4104e839263b38c2328e516"}}'
     )
     deserialized = load_from_json_str(serialized_str)
     assert deserialized == payload
@@ -520,15 +585,18 @@ def test_json_serialization_high_level_utilities(tmp_path):
     serialized_str = dump_to_json_bytes(payload, canonical=True)
     assert (
         serialized_str  # Keys are sorted
-        == rb'{"a": "h\u00eallo", "b": {"$binary": {"base64": "eHl6", "subType": "00"}}, "c": {"$binary": {"base64": "fAsY9fQQToOSY7OMIyjlFg==", "subType": "04"}}}'
+        == (
+            rb'{"a": "h\u00eallo", "b": {"$binary": {"base64": "eHl6", "subType": "00"}}, '
+            rb'"c": {"$binary": {"base64": "fAsY9fQQToOSY7OMIyjlFg==", "subType": "04"}}}'
+        )
     )
     deserialized = load_from_json_bytes(serialized_str)
     assert deserialized == payload
 
     serialized_str = dump_to_json_bytes(payload, canonical=True, ensure_ascii=False)  # Json arguments well propagated
-    assert (
-        serialized_str
-        == b'{"a": "h\xc3\xaallo", "b": {"$binary": {"base64": "eHl6", "subType": "00"}}, "c": {"$binary": {"base64": "fAsY9fQQToOSY7OMIyjlFg==", "subType": "04"}}}'
+    assert serialized_str == (
+        b'{"a": "h\xc3\xaallo", "b": {"$binary": {"base64": "eHl6", "subType": "00"}}, '
+        b'"c": {"$binary": {"base64": "fAsY9fQQToOSY7OMIyjlFg==", "subType": "04"}}}'
     )
     deserialized = load_from_json_bytes(serialized_str)
     assert deserialized == payload
@@ -536,17 +604,18 @@ def test_json_serialization_high_level_utilities(tmp_path):
     serialized_str = dump_to_json_bytes(payload, canonical=False)
     assert (
         serialized_str  # Keys are sorted
-        == (b'{"a": "h\\u00eallo", "b": {"$binary": {"base64": "eHl6", "subType": "00"}'
-            b'}, "c": {"$uuid": "7c0b18f5f4104e839263b38c2328e516"}}')
+        == (
+            b'{"a": "h\\u00eallo", "b": {"$binary": {"base64": "eHl6", "subType": "00"}'
+            b'}, "c": {"$uuid": "7c0b18f5f4104e839263b38c2328e516"}}'
+        )
     )
     deserialized = load_from_json_bytes(serialized_str)
     assert deserialized == payload
 
     serialized_str = dump_to_json_bytes(payload, canonical=False, ensure_ascii=False)  # Json arguments well propagated
-    assert (
-        serialized_str
-        == (b'{"a": "h\xc3\xaallo", "b": {"$binary": {"base64": "eHl6", "subType": "00"}'
-            b'}, "c": {"$uuid": "7c0b18f5f4104e839263b38c2328e516"}}')
+    assert serialized_str == (
+        b'{"a": "h\xc3\xaallo", "b": {"$binary": {"base64": "eHl6", "subType": "00"}'
+        b'}, "c": {"$uuid": "7c0b18f5f4104e839263b38c2328e516"}}'
     )
     deserialized = load_from_json_bytes(serialized_str)
     assert deserialized == payload
@@ -555,19 +624,22 @@ def test_json_serialization_high_level_utilities(tmp_path):
 
     tmp_filepath = os.path.join(tmp_path, "dummy_temp_file.dat")
 
-    serialized_str = dump_to_json_file(tmp_filepath, data=payload, canonical=True, ensure_ascii=False)  # Json arguments well propagated
-    assert (
-        serialized_str
-        == b'{"a": "h\xc3\xaallo", "b": {"$binary": {"base64": "eHl6", "subType": "00"}}, "c": {"$binary": {"base64": "fAsY9fQQToOSY7OMIyjlFg==", "subType": "04"}}}'
+    serialized_str = dump_to_json_file(
+        tmp_filepath, data=payload, canonical=True, ensure_ascii=False
+    )  # Json arguments well propagated
+    assert serialized_str == (
+        b'{"a": "h\xc3\xaallo", "b": {"$binary": {"base64": "eHl6", "subType": "00"}}, '
+        b'"c": {"$binary": {"base64": "fAsY9fQQToOSY7OMIyjlFg==", "subType": "04"}}}'
     )
     deserialized = load_from_json_file(tmp_filepath)
     assert deserialized == payload
 
-    serialized_str = dump_to_json_file(tmp_filepath, data=payload, canonical=False, ensure_ascii=False)  # Json arguments well propagated
-    assert (
-        serialized_str
-        == (b'{"a": "h\xc3\xaallo", "b": {"$binary": {"base64": "eHl6", "subType": "00"}'
-            b'}, "c": {"$uuid": "7c0b18f5f4104e839263b38c2328e516"}}')
+    serialized_str = dump_to_json_file(
+        tmp_filepath, data=payload, canonical=False, ensure_ascii=False
+    )  # Json arguments well propagated
+    assert serialized_str == (
+        b'{"a": "h\xc3\xaallo", "b": {"$binary": {"base64": "eHl6", "subType": "00"}'
+        b'}, "c": {"$uuid": "7c0b18f5f4104e839263b38c2328e516"}}'
     )
     deserialized = load_from_json_file(tmp_filepath)
     assert deserialized == payload
@@ -595,10 +667,7 @@ def test_json_serialization_high_level_utilities(tmp_path):
 
 def test_json_serialization_low_level_utilities():
 
-    from json import dumps as original_dumps, loads as original_loads
-
     for extjson_tree in (EXAMPLE_EXTJSON_DATA_TREE_CANONICAL, EXAMPLE_EXTJSON_DATA_TREE_RELAXED):
-
         example_native_data_tree = copy.deepcopy(EXAMPLE_NATIVE_DATA_TREE)
 
         json_str = original_dumps(extjson_tree)
@@ -628,7 +697,6 @@ def test_json_serialization_low_level_utilities():
         assert all(math.isnan(x) for x in decoded_native_data_tree["my_nans"])
         del decoded_native_data_tree["my_nans"]
         del expected_native_data_tree["my_nans"]
-
 
         assert decoded_native_data_tree == expected_native_data_tree
 
@@ -672,4 +740,3 @@ def test_default_canonical_mode_for_all_utilites(tmp_path):
         expected_without_nans = copy.deepcopy(expected_native)
         del expected_without_nans["my_nans"]
         assert decoded == expected_without_nans
-
