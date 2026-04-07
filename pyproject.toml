@@ -24,7 +24,7 @@ target-version = "py310"
 line-length = 120
 
 [tool.tox]
-env_list = ["3.10", "3.11", "3.12", "3.13", "3.14"]
+env_list = ["3.11", "3.12", "3.13", "3.14"]
 
 [tool.tox.env_run_base]
 description = "Run pytest under {base_python}"
