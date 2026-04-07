@@ -41,7 +41,7 @@ from typing import (
 try:
     from decimal import Decimal
 except ImportError:
-    # E.G on Micropython
+    # E.g. on Micropython
     class _FakeDecimal: pass
     Decimal = _FakeDecimal
 
@@ -310,13 +310,9 @@ def _is_aware_datetime(dt: datetime.datetime) -> bool:
     return dt.tzinfo is not None and dt.tzinfo.utcoffset(dt) is not None
 
 
-def _assert_is_aware_datetime(dt: datetime.datetime):
-    assert _is_aware_datetime(dt), f"Unsupported naive datetime encountered: {dt}"
-
-
 def _aware_datetime_to_millis(dt: datetime.datetime) -> int:
     """Convert aware datetime to milliseconds since epoch UTC."""
-    _assert_is_aware_datetime(dt)
+    assert _is_aware_datetime(dt), f"Unsupported naive datetime encountered: {dt}"
     timestamp_ms = dt.timestamp() * 1000
     return math.floor(timestamp_ms)
 
@@ -358,7 +354,6 @@ def dumps(obj: Any, *args: Any, canonical=True, **kwargs: Any) -> str:
     Recursive function that handles main ExtendedJSON types.
     """
     ext_obj = convert_to_extjson(obj, canonical=canonical)
-    print("CALLING JSON DUMPS", args, kwargs)
     return json.dumps(ext_obj, *args, **kwargs)
 
 
@@ -376,7 +371,7 @@ def dump_to_json_str(data, **extra_options):
     Dump a data tree to a json representation as string.
     Supports advanced types like bytes, uuids, dates...
     """
-    if not IS_MICROPYTHON:  # Unsupported by mypy for now
+    if not IS_MICROPYTHON:
         extra_options.setdefault("sort_keys", True)
     json_str = dumps(data, **extra_options)
     return json_str
