@@ -437,16 +437,16 @@ def test_extended_json_high_level_utilities(tmp_path):
     serialized_str = dump_to_json_str(payload)
     # Keys are always sorted here
     assert (
-        serialized_str
-        == r'{"a": "h\u00eallo", "b": {"$binary": {"base64": "eHl6", "subType": "00"}}, "c": {"$binary": {"base64": "fAsY9fQQToOSY7OMIyjlFg==", "subType": "04"}}}'
+        serialized_str == r'{"a": "h\u00eallo", "b": {"$binary": {"base64": "eHl6", "subType": "00"}},'
+        r' "c": {"$binary": {"base64": "fAsY9fQQToOSY7OMIyjlFg==", "subType": "04"}}}'
     )
     deserialized = load_from_json_str(serialized_str)
     assert deserialized == payload
 
     serialized_str = dump_to_json_str(payload, ensure_ascii=False)  # Json arguments well propagated
     assert (
-        serialized_str
-        == r'{"a": "hêllo", "b": {"$binary": {"base64": "eHl6", "subType": "00"}}, "c": {"$binary": {"base64": "fAsY9fQQToOSY7OMIyjlFg==", "subType": "04"}}}'
+        serialized_str == r'{"a": "hêllo", "b": {"$binary": {"base64": "eHl6", "subType": "00"}},'
+        r' "c": {"$binary": {"base64": "fAsY9fQQToOSY7OMIyjlFg==", "subType": "04"}}}'
     )
     deserialized = load_from_json_str(serialized_str)
     assert deserialized == payload
@@ -454,16 +454,16 @@ def test_extended_json_high_level_utilities(tmp_path):
     serialized_str = dump_to_json_bytes(payload)
     # Keys are sorted
     assert (
-        serialized_str
-        == rb'{"a": "h\u00eallo", "b": {"$binary": {"base64": "eHl6", "subType": "00"}}, "c": {"$binary": {"base64": "fAsY9fQQToOSY7OMIyjlFg==", "subType": "04"}}}'
+        serialized_str == rb'{"a": "h\u00eallo", "b": {"$binary": {"base64": "eHl6", "subType": "00"}},'
+        rb' "c": {"$binary": {"base64": "fAsY9fQQToOSY7OMIyjlFg==", "subType": "04"}}}'
     )
     deserialized = load_from_json_bytes(serialized_str)
     assert deserialized == payload
 
     serialized_str = dump_to_json_bytes(payload, ensure_ascii=False)  # Json arguments well propagated
     assert (
-        serialized_str
-        == b'{"a": "h\xc3\xaallo", "b": {"$binary": {"base64": "eHl6", "subType": "00"}}, "c": {"$binary": {"base64": "fAsY9fQQToOSY7OMIyjlFg==", "subType": "04"}}}'
+        serialized_str == b'{"a": "h\xc3\xaallo", "b": {"$binary": {"base64": "eHl6", "subType": "00"}},'
+        b' "c": {"$binary": {"base64": "fAsY9fQQToOSY7OMIyjlFg==", "subType": "04"}}}'
     )
     deserialized = load_from_json_bytes(serialized_str)
     assert deserialized == payload
@@ -471,8 +471,8 @@ def test_extended_json_high_level_utilities(tmp_path):
     tmp_filepath = os.path.join(tmp_path, "dummy_temp_file.dat")
     serialized_str = dump_to_json_file(tmp_filepath, data=payload, ensure_ascii=True)  # Json arguments well propagated
     assert (
-        serialized_str
-        == rb'{"a": "h\u00eallo", "b": {"$binary": {"base64": "eHl6", "subType": "00"}}, "c": {"$binary": {"base64": "fAsY9fQQToOSY7OMIyjlFg==", "subType": "04"}}}'
+        serialized_str == rb'{"a": "h\u00eallo", "b": {"$binary": {"base64": "eHl6", "subType": "00"}},'
+        rb' "c": {"$binary": {"base64": "fAsY9fQQToOSY7OMIyjlFg==", "subType": "04"}}}'
     )
     deserialized = load_from_json_file(tmp_filepath)
     assert deserialized == payload
