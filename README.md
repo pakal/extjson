@@ -92,7 +92,7 @@ back = load_from_json_str(json_text)
 assert back == payload
 ```
 
-## Using extjson's object_hook with sdtlib's `json.loads`
+## Using extjson's object_hook with stdlib's `json.loads`
 
 If you already use Python's stdlib `json` module, you can lazily decode 
 Extended JSON by passing `extjson_decoder_object_hook` as `object_hook`.
