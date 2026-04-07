@@ -170,6 +170,7 @@ def _encode_datetime(obj: datetime.datetime, canonical: bool) -> dict:
         millis = _aware_datetime_to_millis(obj)
         return {"$date": {"$numberLong": str(millis)}}
     # We output datetime as "YYYY-MM-DDTHH:MM:SS[.fff]<offset>" (not microseconds)
+    # Note that Python doesn't support dates outside this 'YYYY' year range anyway
     timespec = "milliseconds" if obj.microsecond != 0 else "seconds"
     dts = obj.isoformat(sep="T", timespec=timespec)
     dts = dts.replace("+00:00", "Z")  # We ASSUME that 0-offset means UTC...
