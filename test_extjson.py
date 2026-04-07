@@ -434,31 +434,40 @@ def test_extended_json_high_level_utilities(tmp_path):
     deserialized = loads(serialized_str)
     assert deserialized == payload
 
+    _EXPECTED = (
+        r'{"a": "h\u00eallo", "b": {"$binary": {"base64": "eHl6", "subType": "00"}},'
+        r' "c": {"$uuid": "7c0b18f5f4104e839263b38c2328e516"}}'
+    )
+    _EXPECTED_NO_ASCII = (
+        r'{"a": "hêllo", "b": {"$binary": {"base64": "eHl6", "subType": "00"}},'
+        r' "c": {"$uuid": "7c0b18f5f4104e839263b38c2328e516"}}'
+    )
+
     serialized_str = dump_to_json_str(payload)
     # Keys are always sorted here
-    assert serialized_str == r'{"a": "h\u00eallo", "b": {"$binary": {"base64": "eHl6", "subType": "00"}}, "c": {"$uuid": "7c0b18f5f4104e839263b38c2328e516"}}'
+    assert serialized_str == _EXPECTED
     deserialized = load_from_json_str(serialized_str)
     assert deserialized == payload
 
     serialized_str = dump_to_json_str(payload, ensure_ascii=False)  # Json arguments well propagated
-    assert serialized_str == r'{"a": "hêllo", "b": {"$binary": {"base64": "eHl6", "subType": "00"}}, "c": {"$uuid": "7c0b18f5f4104e839263b38c2328e516"}}'
+    assert serialized_str == _EXPECTED_NO_ASCII
     deserialized = load_from_json_str(serialized_str)
     assert deserialized == payload
 
     serialized_str = dump_to_json_bytes(payload)
     # Keys are sorted
-    assert serialized_str == rb'{"a": "h\u00eallo", "b": {"$binary": {"base64": "eHl6", "subType": "00"}}, "c": {"$uuid": "7c0b18f5f4104e839263b38c2328e516"}}'
+    assert serialized_str == _EXPECTED.encode()
     deserialized = load_from_json_bytes(serialized_str)
     assert deserialized == payload
 
     serialized_str = dump_to_json_bytes(payload, ensure_ascii=False)  # Json arguments well propagated
-    assert serialized_str == b'{"a": "h\xc3\xaallo", "b": {"$binary": {"base64": "eHl6", "subType": "00"}}, "c": {"$uuid": "7c0b18f5f4104e839263b38c2328e516"}}'
+    assert serialized_str == _EXPECTED_NO_ASCII.encode()
     deserialized = load_from_json_bytes(serialized_str)
     assert deserialized == payload
 
     tmp_filepath = os.path.join(tmp_path, "dummy_temp_file.dat")
     serialized_str = dump_to_json_file(tmp_filepath, data=payload, ensure_ascii=True)  # Json arguments well propagated
-    assert serialized_str == rb'{"a": "h\u00eallo", "b": {"$binary": {"base64": "eHl6", "subType": "00"}}, "c": {"$uuid": "7c0b18f5f4104e839263b38c2328e516"}}'
+    assert serialized_str == _EXPECTED.encode()
     deserialized = load_from_json_file(tmp_filepath)
     assert deserialized == payload
 
