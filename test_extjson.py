@@ -425,7 +425,7 @@ def test_extended_json_decode_invalid_date():
             print("INVALID DATE PARSED:", res)
 
 
-def test_extended_json_high_level_utilities(tmp_path):
+def test_extended_json_high_level_utilities_relaxed(tmp_path):
     uid = uuid.UUID("7c0b18f5-f410-4e83-9263-b38c2328e516")
     payload = dict(b=b"xyz", a="hêllo", c=uid)
 
@@ -467,6 +467,55 @@ def test_extended_json_high_level_utilities(tmp_path):
 
     tmp_filepath = os.path.join(tmp_path, "dummy_temp_file.dat")
     serialized_str = dump_to_json_file(tmp_filepath, data=payload, ensure_ascii=True)  # Json arguments well propagated
+    assert serialized_str == _EXPECTED.encode()
+    deserialized = load_from_json_file(tmp_filepath)
+    assert deserialized == payload
+
+
+def test_extended_json_high_level_utilities_canonical(tmp_path):
+    uid = uuid.UUID("7c0b18f5-f410-4e83-9263-b38c2328e516")
+    payload = dict(b=b"xyz", a="hêllo", c=uid)
+
+    serialized_str = dumps(payload, canonical=True)
+    # Keys are not always sorted...
+    deserialized = loads(serialized_str)
+    assert deserialized == payload
+
+    _EXPECTED = (
+        r'{"a": "h\u00eallo", "b": {"$binary": {"base64": "eHl6", "subType": "00"}},'
+        r' "c": {"$binary": {"base64": "fAsY9fQQToOSY7OMIyjlFg==", "subType": "04"}}}'
+    )
+    _EXPECTED_NO_ASCII = (
+        r'{"a": "hêllo", "b": {"$binary": {"base64": "eHl6", "subType": "00"}},'
+        r' "c": {"$binary": {"base64": "fAsY9fQQToOSY7OMIyjlFg==", "subType": "04"}}}'
+    )
+
+    serialized_str = dump_to_json_str(payload, canonical=True)
+    # Keys are always sorted here
+    assert serialized_str == _EXPECTED
+    deserialized = load_from_json_str(serialized_str)
+    assert deserialized == payload
+
+    serialized_str = dump_to_json_str(payload, canonical=True, ensure_ascii=False)  # Json arguments well propagated
+    assert serialized_str == _EXPECTED_NO_ASCII
+    deserialized = load_from_json_str(serialized_str)
+    assert deserialized == payload
+
+    serialized_str = dump_to_json_bytes(payload, canonical=True)
+    # Keys are sorted
+    assert serialized_str == _EXPECTED.encode()
+    deserialized = load_from_json_bytes(serialized_str)
+    assert deserialized == payload
+
+    serialized_str = dump_to_json_bytes(payload, canonical=True, ensure_ascii=False)  # Json arguments well propagated
+    assert serialized_str == _EXPECTED_NO_ASCII.encode()
+    deserialized = load_from_json_bytes(serialized_str)
+    assert deserialized == payload
+
+    tmp_filepath = os.path.join(tmp_path, "dummy_temp_file.dat")
+    serialized_str = dump_to_json_file(  # Json arguments well propagated
+        tmp_filepath, data=payload, canonical=True, ensure_ascii=True
+    )
     assert serialized_str == _EXPECTED.encode()
     deserialized = load_from_json_file(tmp_filepath)
     assert deserialized == payload

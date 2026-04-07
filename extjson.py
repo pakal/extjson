@@ -322,12 +322,12 @@ def _millis_to_datetime(
 # HIGH LEVEL UTILITIES #
 
 
-def dumps(obj: Any, *args: Any, **kwargs: Any) -> str:
+def dumps(obj: Any, *args: Any, canonical=False, **kwargs: Any) -> str:
     """Helper function that wraps :func:`json.dumps`.
 
     Recursive function that handles main ExtendedJSON types.
     """
-    ext_obj = convert_to_extjson(obj)
+    ext_obj = convert_to_extjson(obj, canonical=canonical)
     return json.dumps(ext_obj, *args, **kwargs)
 
 
