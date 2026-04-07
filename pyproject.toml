@@ -17,10 +17,19 @@ packages = [{include = "extjson.py"}]
 pytest = ">=7.0"
 pytz = ">=2021.1"
 ruff = ">=0.4"
+tox = ">=4.0"
 
 [tool.ruff]
 target-version = "py310"
 line-length = 120
+
+[tool.tox]
+env_list = ["3.10", "3.11", "3.12", "3.13", "3.14"]
+
+[tool.tox.env_run_base]
+description = "Run pytest under {base_python}"
+deps = ["pytest>=7.0", "pytz>=2021.1"]
+commands = [["pytest", "test_extjson.py", "-v"]]
 
 [tool.ruff.lint]
 select = ["E", "F", "W", "I"]
