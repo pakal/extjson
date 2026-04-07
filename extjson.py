@@ -20,6 +20,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 """
 
+
 from __future__ import annotations
 
 import base64
@@ -36,6 +37,7 @@ from typing import (
     Type,
     Union,
 )
+
 
 # Boundary between int32 and int64 for canonical representation of integers
 _INT32_MAX = 2**31
@@ -89,7 +91,7 @@ def _convert_primitive_to_extjson(obj: Any, canonical: bool) -> Any:
     return obj
 
 
-def convert_from_extjson(ext_obj: Any) -> Any:  # FIXME REMOVE CANONICAL!!!
+def convert_from_extjson(ext_obj: Any) -> Any:
     """Recursive helper method that converts BSON types so they can be
     converted into json.
     """
@@ -107,7 +109,7 @@ def _convert_primitive_from_extjson_dict(ext_obj_dict: Mapping[str, Any]) -> Any
     if len(ext_obj_dict) != 1:
         return ext_obj_dict  # Not a {$type: ...} dict
     for k in ext_obj_dict:
-        if k in _PARSERS_SET:
+        if k in _PARSERS:
             match = k
             break
     if match:
@@ -140,11 +142,11 @@ def _encode_float(obj: float, canonical: bool) -> Any:
     elif canonical:
         # repr() will return the shortest string guaranteed to produce the
         # original value, when float() is called on it.
-        return {"$numberDouble": str(repr(obj))}
+        return {"$numberDouble": repr(obj)}
     return obj
 
 
-def _encode_decimal(obj: decimal.decimal, canonical: bool) -> dict:
+def _encode_decimal(obj: decimal.Decimal, canonical: bool) -> dict:
     # Always use canonical representation for Decimal numbers
     return {"$numberDecimal": str(obj)}
 
@@ -163,7 +165,7 @@ def _encode_datetime(obj: datetime.datetime, canonical: bool) -> dict:
 
 
 def _encode_bytes(obj: bytes, canonical: bool) -> dict:
-    # Always use canonical representation for Bytes numbers
+    # Always use canonical representation for Bytes
     return _encode_canonical_binary(obj, BINARY_SUBTYPE)
 
 
@@ -189,7 +191,7 @@ _ENCODERS: dict[Type, Callable[[Any, bool], Any]] = {
     type(None): _encode_noop,
 }
 
-_EXTENDED_JSON_BUILT_IN_TYPES = tuple(t for t in _ENCODERS)
+_EXTENDED_JSON_BUILT_IN_TYPES = tuple(_ENCODERS)
 
 
 def _parse_canonical_binary(doc: Any) -> Union[bytes, uuid.UUID]:
@@ -219,58 +221,39 @@ def _parse_canonical_datetime(doc: Any) -> datetime.datetime:
     """Decode a JSON datetime to python datetime.datetime."""
     dtm = doc["$date"]
     if len(doc) != 1:
-        raise TypeError(f"Bad $date, extra field(s): {doc}")  # FIXME MUTUALIZE THIS
+        raise TypeError(f"Bad $date, extra field(s): {doc}")
     if isinstance(dtm, str):
         return datetime.datetime.fromisoformat(dtm)
     return _millis_to_datetime(dtm)
 
 
-def _parse_canonical_int32(doc: Any) -> int:
-    """Decode a JSON int32 to python int."""
-    i_str = doc["$numberInt"]
+def _get_single_str_field(doc: Any, key: str) -> str:
+    value = doc[key]
     if len(doc) != 1:
-        raise TypeError(f"Bad $numberInt, extra field(s): {doc}")  # FIXME MUTUALIZE THIS
-    if not isinstance(i_str, str):
-        raise TypeError(f"$numberInt must be string: {doc}")
-    return int(i_str)
+        raise TypeError(f"Bad {key}, extra field(s): {doc}")
+    if not isinstance(value, str):
+        raise TypeError(f"{key} must be a string: {doc}")
+    return value
+
+
+def _parse_canonical_int32(doc: Any) -> int:
+    return int(_get_single_str_field(doc, "$numberInt"))
 
 
 def _parse_canonical_int64(doc: Any) -> int:
-    """Decode a JSON int64 to bson.int64.Int64."""
-    l_str = doc["$numberLong"]
-    if len(doc) != 1:
-        raise TypeError(f"Bad $numberLong, extra field(s): {doc}")
-    if not isinstance(l_str, str):
-        raise TypeError(f"$numberLong must be string: {doc}")  # FIXME MUTUALIZE
-    return int(l_str)  # No need for Int64 type here
+    return int(_get_single_str_field(doc, "$numberLong"))
 
 
 def _parse_canonical_double(doc: Any) -> float:
-    """Decode a JSON double to python float."""
-    d_str = doc["$numberDouble"]
-    if len(doc) != 1:
-        raise TypeError(f"Bad $numberDouble, extra field(s): {doc}")
-    if not isinstance(d_str, str):
-        raise TypeError(f"$numberDouble must be string: {doc}")  # FIXME MUTUALIZE
-    return float(d_str)
+    return float(_get_single_str_field(doc, "$numberDouble"))
 
 
 def _parse_canonical_decimal(doc: Any) -> decimal.Decimal:
-    d_str = doc["$numberDecimal"]
-    if len(doc) != 1:
-        raise TypeError(f"Bad $numberDecimal, extra field(s): {doc}")
-    if not isinstance(d_str, str):
-        raise TypeError(f"$numberDecimal must be string: {doc}")  # FIXME MUTUALIZE
-    return decimal.Decimal(d_str)
+    return decimal.Decimal(_get_single_str_field(doc, "$numberDecimal"))
 
 
 def _parse_legacy_uuid(doc: Any) -> Union[bytes, uuid.UUID]:
-    """Decode a JSON legacy $uuid to Python UUID."""
-    if len(doc) != 1:
-        raise TypeError(f"Bad $uuid, extra field(s): {doc}")
-    if not isinstance(doc["$uuid"], str):
-        raise TypeError(f"$uuid must be a string: {doc}")
-    return uuid.UUID(doc["$uuid"])
+    return uuid.UUID(_get_single_str_field(doc, "$uuid"))
 
 
 _PARSERS: dict[str, Callable[[Any], Any]] = {
@@ -283,7 +266,6 @@ _PARSERS: dict[str, Callable[[Any], Any]] = {
     "$numberDouble": _parse_canonical_double,
     "$numberDecimal": _parse_canonical_decimal,
 }
-_PARSERS_SET = set(_PARSERS)
 
 
 _EPOCH_AWARE = datetime.datetime.fromtimestamp(0, datetime.timezone.utc)
@@ -294,13 +276,9 @@ def _is_aware_datetime(dt: datetime.datetime) -> bool:
     return dt.tzinfo is not None and dt.tzinfo.utcoffset(dt) is not None
 
 
-def _assert_is_aware_datetime(dt: datetime.datetime):
-    assert _is_aware_datetime(dt), f"Unsupported naive datetime encountered: {dt}"
-
-
 def _datetime_to_millis(dt: datetime.datetime) -> int:
     """Convert aware datetime to milliseconds since epoch UTC."""
-    _assert_is_aware_datetime(dt)
+    assert _is_aware_datetime(dt), f"Unsupported naive datetime encountered: {dt}"
     dt = dt - dt.utcoffset()  # type: ignore
     return int(calendar.timegm(dt.timetuple()) * 1000 + dt.microsecond // 1000)
 
@@ -374,7 +352,6 @@ def load_from_json_bytes(data, **extra_options):
     """
     Same as `load_from_json_str`, but takes UTF8-encoded bytes as input.
     """
-
     json_str = data.decode(UTF8_ENCODING)
     return load_from_json_str(data=json_str, **extra_options)
 

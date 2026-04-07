@@ -28,8 +28,6 @@ from extjson import (
     loads,
 )
 
-UTF8_ENCODING = "utf8"
-
 
 EXAMPLE_NATIVE_DATA_TREE = {
     "my_none": None,
