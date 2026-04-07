@@ -53,7 +53,7 @@ UTF8_ENCODING = "utf8"
 # LOW LEVEL UTILITIES #
 
 
-def convert_to_extjson(obj: Any, canonical: bool = True) -> Any:
+def convert_to_extjson(obj: Any, canonical: bool = False) -> Any:
     """Recursive helper method that converts BSON types so they can be
     converted into json.
     """

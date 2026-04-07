@@ -70,6 +70,34 @@ EXAMPLE_NATIVE_DATA_TREE = {
 }
 
 
+def test_extended_json_primitive_encode_decode_in_all_modes():
+
+    operations = 0
+
+    def _test_primitive_encode_decode(_item, canonical):
+        nonlocal operations
+        operations += 1
+        ext_json = convert_to_extjson(_item, canonical=canonical)
+        decoded_item = convert_from_extjson(ext_json)
+        if isinstance(_item, (float, Decimal)) and math.isnan(_item):
+            assert math.isnan(decoded_item)  # No equality between NaNs
+        else:
+            assert decoded_item == _item, (repr(_item), repr(decoded_item))
+
+    for canonical_mode in [True, False]:
+        for value in EXAMPLE_NATIVE_DATA_TREE.values():
+            if isinstance(value, list):
+                for item in value:
+                    _test_primitive_encode_decode(item, canonical=canonical_mode)
+            elif isinstance(value, dict):
+                for item in value.values():
+                    _test_primitive_encode_decode(item, canonical=canonical_mode)
+            else:
+                _test_primitive_encode_decode(value, canonical=canonical_mode)
+
+    assert operations > 20, operations
+
+
 def test_extended_json_tree_encode_decode_in_canonical_mode():
 
     example_native_data_tree = copy.deepcopy(EXAMPLE_NATIVE_DATA_TREE)
@@ -205,34 +233,6 @@ def test_extended_json_tree_encode_decode_in_canonical_mode():
     }
 
     assert decoded_native_data_tree == example_native_data_tree  # ROUND-TRIP EQUALITY AFTER REMOVING NaN
-
-
-def test_extended_json_primitive_encode_decode_in_all_modes():
-
-    operations = 0
-
-    def _test_primitive_encode_decode(_item, canonical):
-        nonlocal operations
-        operations += 1
-        ext_json = convert_to_extjson(_item, canonical=canonical)
-        decoded_item = convert_from_extjson(ext_json)
-        if isinstance(_item, (float, Decimal)) and math.isnan(_item):
-            assert math.isnan(decoded_item)  # No equality between NaNs
-        else:
-            assert decoded_item == _item, (repr(_item), repr(decoded_item))
-
-    for canonical_mode in [True, False]:
-        for value in EXAMPLE_NATIVE_DATA_TREE.values():
-            if isinstance(value, list):
-                for item in value:
-                    _test_primitive_encode_decode(item, canonical=canonical_mode)
-            elif isinstance(value, dict):
-                for item in value.values():
-                    _test_primitive_encode_decode(item, canonical=canonical_mode)
-            else:
-                _test_primitive_encode_decode(value, canonical=canonical_mode)
-
-    assert operations > 20, operations
 
 
 def test_extended_json_tree_encode_decode_in_relaxed_mode():
@@ -436,44 +436,29 @@ def test_extended_json_high_level_utilities(tmp_path):
 
     serialized_str = dump_to_json_str(payload)
     # Keys are always sorted here
-    assert (
-        serialized_str == r'{"a": "h\u00eallo", "b": {"$binary": {"base64": "eHl6", "subType": "00"}},'
-        r' "c": {"$binary": {"base64": "fAsY9fQQToOSY7OMIyjlFg==", "subType": "04"}}}'
-    )
+    assert serialized_str == r'{"a": "h\u00eallo", "b": {"$binary": {"base64": "eHl6", "subType": "00"}}, "c": {"$uuid": "7c0b18f5f4104e839263b38c2328e516"}}'
     deserialized = load_from_json_str(serialized_str)
     assert deserialized == payload
 
     serialized_str = dump_to_json_str(payload, ensure_ascii=False)  # Json arguments well propagated
-    assert (
-        serialized_str == r'{"a": "hêllo", "b": {"$binary": {"base64": "eHl6", "subType": "00"}},'
-        r' "c": {"$binary": {"base64": "fAsY9fQQToOSY7OMIyjlFg==", "subType": "04"}}}'
-    )
+    assert serialized_str == r'{"a": "hêllo", "b": {"$binary": {"base64": "eHl6", "subType": "00"}}, "c": {"$uuid": "7c0b18f5f4104e839263b38c2328e516"}}'
     deserialized = load_from_json_str(serialized_str)
     assert deserialized == payload
 
     serialized_str = dump_to_json_bytes(payload)
     # Keys are sorted
-    assert (
-        serialized_str == rb'{"a": "h\u00eallo", "b": {"$binary": {"base64": "eHl6", "subType": "00"}},'
-        rb' "c": {"$binary": {"base64": "fAsY9fQQToOSY7OMIyjlFg==", "subType": "04"}}}'
-    )
+    assert serialized_str == rb'{"a": "h\u00eallo", "b": {"$binary": {"base64": "eHl6", "subType": "00"}}, "c": {"$uuid": "7c0b18f5f4104e839263b38c2328e516"}}'
     deserialized = load_from_json_bytes(serialized_str)
     assert deserialized == payload
 
     serialized_str = dump_to_json_bytes(payload, ensure_ascii=False)  # Json arguments well propagated
-    assert (
-        serialized_str == b'{"a": "h\xc3\xaallo", "b": {"$binary": {"base64": "eHl6", "subType": "00"}},'
-        b' "c": {"$binary": {"base64": "fAsY9fQQToOSY7OMIyjlFg==", "subType": "04"}}}'
-    )
+    assert serialized_str == b'{"a": "h\xc3\xaallo", "b": {"$binary": {"base64": "eHl6", "subType": "00"}}, "c": {"$uuid": "7c0b18f5f4104e839263b38c2328e516"}}'
     deserialized = load_from_json_bytes(serialized_str)
     assert deserialized == payload
 
     tmp_filepath = os.path.join(tmp_path, "dummy_temp_file.dat")
     serialized_str = dump_to_json_file(tmp_filepath, data=payload, ensure_ascii=True)  # Json arguments well propagated
-    assert (
-        serialized_str == rb'{"a": "h\u00eallo", "b": {"$binary": {"base64": "eHl6", "subType": "00"}},'
-        rb' "c": {"$binary": {"base64": "fAsY9fQQToOSY7OMIyjlFg==", "subType": "04"}}}'
-    )
+    assert serialized_str == rb'{"a": "h\u00eallo", "b": {"$binary": {"base64": "eHl6", "subType": "00"}}, "c": {"$uuid": "7c0b18f5f4104e839263b38c2328e516"}}'
     deserialized = load_from_json_file(tmp_filepath)
     assert deserialized == payload
 
@@ -488,12 +473,13 @@ def test_extended_json_handling_of_datetimes():
     payload2 = {"date": pst_date}
     serialized_str2 = dump_to_json_str(payload2)
 
-    assert serialized_str1 == r'{"date": {"$date": {"$numberLong": "1665360000000"}}}'
-    assert serialized_str1 == serialized_str2
+    assert serialized_str1 == r'{"date": {"$date": "2022-10-10T00:00:00Z"}}'
+    assert serialized_str2 == r'{"date": {"$date": "2022-10-09T17:00:00-07:00"}}'
+    assert serialized_str1 != serialized_str2  # Timezone is preserved in relaxed mode
 
     deserialized = load_from_json_str(serialized_str1)
     assert deserialized == payload1
     assert deserialized == payload2
 
     utcoffset = deserialized["date"].utcoffset()
-    assert utcoffset == timedelta(0)  # Date is returned as UTC in any case!
+    assert utcoffset == timedelta(0)  # UTC date round-trips as UTC
