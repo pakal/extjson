@@ -1,9 +1,9 @@
-# extjson
+# Extend Json Library
 
-`extjson` is a small Python library for serializing and deserializing data to/from JSON,
+The library `extjson` is a small Python module for serializing and deserializing data to/from JSON,
 following MongoDB ExtendedJSON conventions.
 
-It currently adds support for these types (not MongoDB-specific):
+It currently adds support for these common types:
 
 - `datetime.datetime` (timezone-aware)
 - `bytes`
@@ -11,14 +11,18 @@ It currently adds support for these types (not MongoDB-specific):
 - `decimal.Decimal`
 - special floating-point values (`NaN`, `Infinity`, `-Infinity`)
 
-For naive dates/datetimes, use JSON strings with your own formatting (e.g. `isoformat()`).
+For naive datetimes, or for separate dates/times, use JSON strings with your own formatting (e.g. `isoformat()`).
 
 Serialization can be done in two modes:
 - **Relaxed mode** (default): use native JSON numbers, iso-formatted dates, and simple
   `$uuid` wrappers, wherever possible.
-- **Canonical mode** (default): use strict Extended JSON wrappers such as
+- **Canonical mode**: use strict Extended JSON wrappers such as
   `$numberInt`, `$numberLong`, `$numberDouble`, `$binary`... for every value.
   Much less readable, but more straightforward to parse.
+
+Note that the parser will transparently handle both formats.
+
+For the whole Extended Json format, see https://www.mongodb.com/docs/languages/python/pymongo-driver/current/data-formats/extended-json/
 
 ## Installation
 
@@ -66,7 +70,7 @@ print(convert_to_extjson(42, canonical=False))  # 42
 If you want JSON strings/bytes/files directly, use the helper API:
 
 - `dumps(obj, **json_kwargs)` / `loads(data, **json_kwargs)`: replacements for stdlib JSON functions
-- `dump_to_json_str(data, **json_kwargs)` / `load_from_json_str(data, **json_kwargs)`: similar but 
+- `dump_to_json_str(data, **json_kwargs)` / `load_from_json_str(data, **json_kwargs)`: same as above, but 
   preconfigured for reproductibility (e.g. `sort_keys=True`)
 - `dump_to_json_bytes(data, **json_kwargs)` / `load_from_json_bytes(data, **json_kwargs)`
 - `dump_to_json_file(path, data, **json_kwargs)` / `load_from_json_file(path, **json_kwargs)`
@@ -80,7 +84,7 @@ from extjson import dump_to_json_str, load_from_json_str
 
 payload = {"name": "hello", "blob": b"xyz", "uid": uuid.uuid4()}
 
-json_text = dump_to_json_str(payload)  # sort_keys=True by default
+json_text = dump_to_json_str(payload)
 back = load_from_json_str(json_text)
 
 assert back == payload
@@ -88,9 +92,9 @@ assert back == payload
 
 ## Notes and behavior details
 
-- When encoding, Datetimes must be timezone-aware.
+- When encoding, datetimes must be timezone-aware.
 - When encoding, tuples and their content remain untouched (only lists and dicts are recursively processed).
-- Decoded datetimes are normalized to UTC.
+- Decoded datetimes are normalized to UTC timezone.
 - `NaN` values round-trip, but `NaN != NaN` still applies in Python comparisons.
 
 ## License
