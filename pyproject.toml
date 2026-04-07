@@ -11,6 +11,9 @@ license = {text = "MIT"}
 readme = "README.md"
 requires-python = ">=3.10"
 
+[project.urls]
+Repository = "https://github.com/pakal/extjson"
+
 [tool.poetry]
 packages = [{include = "extjson.py"}]
 
