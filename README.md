@@ -1,7 +1,7 @@
-# Extend Json Library
+# extjson
 
-The library `extjson` is a small Python module for serializing and deserializing data to/from JSON,
-following MongoDB ExtendedJSON conventions.
+The `extjson` library is a small Python module for serializing and deserializing data to/from JSON,
+following MongoDB Extended JSON conventions.
 
 It currently adds support for these common types:
 
@@ -20,9 +20,9 @@ Serialization can be done in two modes:
   `$numberInt`, `$numberLong`, `$numberDouble`, `$binary`... for every value.
   Much less readable, but more straightforward to parse.
 
-Note that the parser will transparently handle both formats.
+Note that the parser will transparently decode both formats.
 
-For the whole Extended Json format, see https://www.mongodb.com/docs/languages/python/pymongo-driver/current/data-formats/extended-json/
+For the complete Extended JSON specification, see https://www.mongodb.com/docs/languages/python/pymongo-driver/current/data-formats/extended-json/
 
 ## Installation
 
@@ -71,7 +71,7 @@ If you want JSON strings/bytes/files directly, use the helper API:
 
 - `dumps(obj, **json_kwargs)` / `loads(data, **json_kwargs)`: replacements for stdlib JSON functions
 - `dump_to_json_str(data, **json_kwargs)` / `load_from_json_str(data, **json_kwargs)`: same as above, but 
-  preconfigured for reproductibility (e.g. `sort_keys=True`)
+  preconfigured for reproducibility (e.g. `sort_keys=True`)
 - `dump_to_json_bytes(data, **json_kwargs)` / `load_from_json_bytes(data, **json_kwargs)`
 - `dump_to_json_file(path, data, **json_kwargs)` / `load_from_json_file(path, **json_kwargs)`
 

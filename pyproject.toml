@@ -8,6 +8,7 @@ version = "0.1.0"
 description = "Extended JSON serialization library supporting main BSON types (datetime, bytes, UUID, Decimal, …)"
 authors = [{name = "Pascal Chambon"}]
 license = {text = "MIT"}
+readme = "README.md"
 requires-python = ">=3.10"
 
 [tool.poetry]
