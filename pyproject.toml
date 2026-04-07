@@ -1,0 +1,18 @@
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.poetry]
+name = "extjson"
+version = "0.1.0"
+description = "Extended JSON serialization library supporting main BSON types (datetime, bytes, UUID, Decimal, …)"
+authors = ["Pascal Chambon"]
+license = "MIT"
+packages = [{include = "extjson.py"}]
+
+[tool.poetry.dependencies]
+python = "^3.10"
+pytz = ">=2021.1"
+
+[tool.poetry.group.dev.dependencies]
+pytest = ">=7.0"
