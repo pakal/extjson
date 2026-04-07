@@ -48,7 +48,7 @@ payload = {
     "raw": b"hello",
 }
 
-ext_doc = convert_to_extjson(payload, canonical=True)
+ext_doc = convert_to_extjson(payload)
 roundtrip = convert_from_extjson(ext_doc)
 
 assert roundtrip == payload
@@ -65,6 +65,8 @@ print(convert_to_extjson(42, canonical=True))   # {'$numberInt': '42'}
 print(convert_to_extjson(42, canonical=False))  # 42
 ```
 
+The default is `canonical=False` (relaxed mode).
+
 ## High-level JSON helpers
 
 If you want JSON strings/bytes/files directly, use the helper API:
@@ -75,8 +77,8 @@ If you want JSON strings/bytes/files directly, use the helper API:
 - `dump_to_json_bytes(data, **json_kwargs)` / `load_from_json_bytes(data, **json_kwargs)`
 - `dump_to_json_file(path, data, **json_kwargs)` / `load_from_json_file(path, **json_kwargs)`
 
-All these functions accept a `canonical=True|False` argument, and forward the rest to the underlying `json` 
-functions (e.g. `indent=2` for pretty-printing).
+All these functions accept a `canonical=True|False` argument (default: `False`), and forward the rest to the
+underlying `json` functions (e.g. `indent=2` for pretty-printing).
 
 ```python
 import uuid
@@ -92,9 +94,9 @@ assert back == payload
 
 ## Notes and behavior details
 
-- When encoding, datetimes must be timezone-aware.
-- When encoding, tuples and their content remain untouched (only lists and dicts are recursively processed).
+- When encoding, datetimes must be timezone-aware. 
 - Decoded datetimes are normalized to UTC timezone.
+- When encoding, tuples are treated as JSON arrays (same as lists).
 - `NaN` values round-trip, but `NaN != NaN` still applies in Python comparisons.
 
 ## License
