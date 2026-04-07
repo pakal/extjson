@@ -597,7 +597,7 @@ def test_json_serialization_low_level_utilities():
 
     from json import dumps as original_dumps, loads as original_loads
 
-    for extjson_tree in (EXAMPLE_EXTJSON_DATA_TREE_CANONICAL, EXAMPLE_EXTJSON_DATA_TREE_CANONICAL):
+    for extjson_tree in (EXAMPLE_EXTJSON_DATA_TREE_CANONICAL, EXAMPLE_EXTJSON_DATA_TREE_RELAXED):
 
         example_native_data_tree = copy.deepcopy(EXAMPLE_NATIVE_DATA_TREE)
 
@@ -610,6 +610,27 @@ def test_json_serialization_low_level_utilities():
         del example_native_data_tree["my_nans"]
 
         assert decoded_native_data_tree == example_native_data_tree  # Now equivalent
+
+    # Direct tests for extjson.dumps()/loads() low-level helpers.
+    example_native_data_tree = copy.deepcopy(EXAMPLE_NATIVE_DATA_TREE)
+
+    dumped_canonical = dumps(example_native_data_tree, canonical=True, sort_keys=True)
+    dumped_relaxed = dumps(example_native_data_tree, canonical=False, sort_keys=True)
+
+    assert original_loads(dumped_canonical) == EXAMPLE_EXTJSON_DATA_TREE_CANONICAL
+    assert original_loads(dumped_relaxed) == EXAMPLE_EXTJSON_DATA_TREE_RELAXED
+
+    for dumped in (dumped_canonical, dumped_relaxed, dumped_relaxed.encode("utf8"), bytearray(dumped_relaxed, "utf8")):
+        decoded_native_data_tree = loads(dumped)
+        expected_native_data_tree = copy.deepcopy(EXAMPLE_NATIVE_DATA_TREE)
+
+        assert decoded_native_data_tree != expected_native_data_tree
+        assert all(math.isnan(x) for x in decoded_native_data_tree["my_nans"])
+        del decoded_native_data_tree["my_nans"]
+        del expected_native_data_tree["my_nans"]
+
+
+        assert decoded_native_data_tree == expected_native_data_tree
 
 
 def test_default_canonical_mode_for_all_utilites(tmp_path):
