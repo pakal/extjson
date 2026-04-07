@@ -69,7 +69,7 @@ The default is `canonical=False` (relaxed mode).
 
 ## High-level JSON helpers
 
-If you want JSON strings/bytes/files directly, use the helper API:
+If you want to handle JSON strings/bytes/files directly, use the helper API:
 
 - `dumps(obj, **json_kwargs)` / `loads(data, **json_kwargs)`: replacements for stdlib JSON functions
 - `dump_to_json_str(data, **json_kwargs)` / `load_from_json_str(data, **json_kwargs)`: same as above, but 
@@ -91,6 +91,34 @@ back = load_from_json_str(json_text)
 
 assert back == payload
 ```
+
+## Using extjson's object_hook with sdtlib's `json.loads`
+
+If you already use Python's stdlib `json` module, you can lazily decode 
+Extended JSON by passing `extjson_decoder_object_hook` as `object_hook`.
+
+```python
+import json
+
+from extjson import extjson_decoder_object_hook
+
+raw = '{"uid": {"$uuid": "7c0b18f5f4104e839263b38c2328e516"}, "blob": {"$binary": {"base64": "eHl6", "subType": "00"}}}'
+decoded = json.loads(raw, object_hook=extjson_decoder_object_hook)
+
+print(decoded)
+# {'uid': UUID('7c0b18f5-f410-4e83-9263-b38c2328e516'), 'blob': b'xyz'}
+```
+
+This hook is for decoding. For encoding, use `convert_to_extjson(...)` or `dumps(...)`.
+
+## Why no `json.dumps(default=...)` hook?
+
+To avoid converting the whole object tree with `convert_to_extjson(...)`, one might be tempted 
+to use a `default` callback passed to `json.dumps`, for encoding values in relaxed mode.
+
+Alas, Python's JSON encoder handles e.g. some floating-point values (`NaN`, `Infinity`, `-Infinity`)
+with its own built-in logic, so a `default` callback is not a reliable place to add Extended 
+JSON wrappers, while still preserving predictable round-tripping.
 
 ## Notes and behavior details
 
