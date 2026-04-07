@@ -68,7 +68,7 @@ def extjson_decoder_object_hook(obj: dict) -> Any:
     return _convert_primitive_from_extjson_dict(obj)
 
 
-def convert_to_extjson(obj: Any, canonical: bool=True) -> Any:
+def convert_to_extjson(obj: Any, canonical: bool=False) -> Any:
     """Recursive helper method that converts BSON types so they can be
     converted into json.
     """
@@ -348,7 +348,7 @@ def _simple_b64decode(s):
 # HIGH LEVEL UTILITIES #
 
 
-def dumps(obj: Any, *args: Any, canonical=True, **kwargs: Any) -> str:
+def dumps(obj: Any, *args: Any, canonical=False, **kwargs: Any) -> str:
     """Helper function that wraps :func:`json.dumps`.
 
     Recursive function that handles main ExtendedJSON types.

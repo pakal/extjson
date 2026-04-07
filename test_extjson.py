@@ -15,7 +15,8 @@ import pytest
 sys.path.append(os.path.dirname(__file__))
 
 from extjson import (convert_to_extjson, convert_from_extjson, extjson_decoder_object_hook, load_from_json_bytes,
-                     load_from_json_str, load_from_json_file, dump_to_json_str, dump_to_json_bytes, dump_to_json_file)
+                     load_from_json_str, load_from_json_file, dump_to_json_str, dump_to_json_bytes, dump_to_json_file,
+                     dumps, loads)
 
 
 
@@ -340,7 +341,6 @@ def test_extended_json_subclass_encode_decode():
             assert roundtrip_obj == my_obj
 
 
-
 def test_extended_json_specific_cases():
 
     assert convert_from_extjson({"$undefined": True}) is None
@@ -351,7 +351,7 @@ def test_extended_json_specific_cases():
     # Handle tuple objects as lists, since JSON does not have a tuple type
     _tuple_obj = (1, b'abc')
     _tuple_obj_extjson = convert_to_extjson(_tuple_obj)
-    assert _tuple_obj_extjson == [{'$numberInt': '1'}, {'$binary': {'base64': 'YWJj', 'subType': '00'}}]
+    assert _tuple_obj_extjson == [1, {'$binary': {'base64': 'YWJj', 'subType': '00'}}]
     assert convert_from_extjson(_tuple_obj_extjson) == list(_tuple_obj)
 
     # If conversion is impossible, we just let the object as is
@@ -610,4 +610,45 @@ def test_json_serialization_low_level_utilities():
         del example_native_data_tree["my_nans"]
 
         assert decoded_native_data_tree == example_native_data_tree  # Now equivalent
+
+
+def test_default_canonical_mode_for_all_utilites(tmp_path):
+    """
+    Check that high-level and low-level utilities all default to canonical=False (i.e relaxed mode).
+    """
+
+    expected_native = copy.deepcopy(EXAMPLE_NATIVE_DATA_TREE)
+
+    # Low-level conversion defaults to relaxed mode.
+    extjson_default = convert_to_extjson(expected_native)
+    assert extjson_default == EXAMPLE_EXTJSON_DATA_TREE_RELAXED
+    assert extjson_default == convert_to_extjson(expected_native, canonical=False)
+
+    json_default1 = dumps(expected_native)
+    assert json_default1 == dumps(expected_native, canonical=False)
+
+    # High-level serializers also default to relaxed mode.
+    json_default2 = dump_to_json_str(expected_native)
+    assert json_default2 == dump_to_json_str(expected_native, canonical=False)
+
+    bytes_default = dump_to_json_bytes(expected_native)
+    assert bytes_default == dump_to_json_bytes(expected_native, canonical=False)
+
+    filepath = os.path.join(tmp_path, "default_mode.json")
+    file_default = dump_to_json_file(filepath, data=expected_native)
+    assert file_default == dump_to_json_file(filepath, data=expected_native, canonical=False)
+
+    # Decoders should parse those default-relaxed payloads back to native values.
+    decoded_from_str1 = load_from_json_str(json_default1)
+    decoded_from_str2 = load_from_json_str(json_default2)
+    decoded_from_bytes = load_from_json_bytes(bytes_default)
+    decoded_from_file = load_from_json_file(filepath)
+
+    for decoded in (decoded_from_str1, decoded_from_str2, decoded_from_bytes, decoded_from_file):
+        assert all(math.isnan(x) for x in decoded["my_nans"])
+        del decoded["my_nans"]
+
+        expected_without_nans = copy.deepcopy(expected_native)
+        del expected_without_nans["my_nans"]
+        assert decoded == expected_without_nans
 
