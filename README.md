@@ -5,11 +5,20 @@ following MongoDB ExtendedJSON conventions.
 
 It currently adds support for these types (not MongoDB-specific):
 
-- `datetime.datetime` (always timezone-aware)
+- `datetime.datetime` (timezone-aware)
 - `bytes`
 - `uuid.UUID`
 - `decimal.Decimal`
 - special floating-point values (`NaN`, `Infinity`, `-Infinity`)
+
+For naive dates/datetimes, use JSON strings with your own formatting (e.g. `isoformat()`).
+
+Serialization can be done in two modes:
+- **Relaxed mode** (default): use native JSON numbers, iso-formatted dates, and simple
+  `$uuid` wrappers, wherever possible.
+- **Canonical mode** (default): use strict Extended JSON wrappers such as
+  `$numberInt`, `$numberLong`, `$numberDouble`, `$binary`... for every value.
+  Much less readable, but more straightforward to parse.
 
 ## Installation
 
@@ -45,13 +54,6 @@ assert roundtrip == payload
 
 Use `convert_to_extjson(..., canonical=True|False)`:
 
-- `canonical=True` (default): strict Extended JSON wrappers such as
-  `$numberInt`, `$numberLong`, `$numberDouble`, `$binary`.
-- `canonical=False`: uses native JSON numbers where possible and legacy `$uuid`
-  for UUID values.
-
-Example:
-
 ```python
 from extjson import convert_to_extjson
 
@@ -63,10 +65,14 @@ print(convert_to_extjson(42, canonical=False))  # 42
 
 If you want JSON strings/bytes/files directly, use the helper API:
 
-- `dumps(obj, **json_kwargs)` / `loads(data, **json_kwargs)`
-- `dump_to_json_str(data, **json_kwargs)` / `load_from_json_str(data, **json_kwargs)`
+- `dumps(obj, **json_kwargs)` / `loads(data, **json_kwargs)`: replacements for stdlib JSON functions
+- `dump_to_json_str(data, **json_kwargs)` / `load_from_json_str(data, **json_kwargs)`: similar but 
+  preconfigured for reproductibility (e.g. `sort_keys=True`)
 - `dump_to_json_bytes(data, **json_kwargs)` / `load_from_json_bytes(data, **json_kwargs)`
 - `dump_to_json_file(path, data, **json_kwargs)` / `load_from_json_file(path, **json_kwargs)`
+
+All these functions accept a `canonical=True|False` argument, and forward the rest to the underlying `json` 
+functions (e.g. `indent=2` for pretty-printing).
 
 ```python
 import uuid
@@ -82,10 +88,10 @@ assert back == payload
 
 ## Notes and behavior details
 
-- Datetimes must be timezone-aware when encoding.
+- When encoding, Datetimes must be timezone-aware.
+- When encoding, tuples and their content remain untouched (only lists and dicts are recursively processed).
 - Decoded datetimes are normalized to UTC.
 - `NaN` values round-trip, but `NaN != NaN` still applies in Python comparisons.
-- Tuples are not specially handled (lists and dicts are recursively processed).
 
 ## License
 

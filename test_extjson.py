@@ -393,8 +393,13 @@ def test_extended_json_subclass_encode_decode():
 
 def test_extended_json_specific_cases():
 
+    # $undefined value is supported
     assert convert_from_extjson({"$undefined": True}) is None
     assert convert_from_extjson({"$undefined": False}) is None
+
+    # Tuples are not recursively processed
+    assert convert_to_extjson({"key": (1, 2)}, canonical=True) == {"key": (1, 2)}
+    assert dumps({"key": (1, 2)}, canonical=True) == '{"key": [1, 2]}'
 
 
 def test_extended_json_decode_invalid_date():
