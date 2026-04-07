@@ -20,13 +20,12 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 """
 
-
 from __future__ import annotations
 
-import calendar
-import decimal
 import base64
+import calendar
 import datetime
+import decimal
 import json
 import math
 import uuid
@@ -37,7 +36,6 @@ from typing import (
     Type,
     Union,
 )
-
 
 # Boundary between int32 and int64 for canonical representation of integers
 _INT32_MAX = 2**31
@@ -55,7 +53,7 @@ UTF8_ENCODING = "utf8"
 # LOW LEVEL UTILITIES #
 
 
-def convert_to_extjson(obj: Any, canonical: bool=True) -> Any:
+def convert_to_extjson(obj: Any, canonical: bool = True) -> Any:
     """Recursive helper method that converts BSON types so they can be
     converted into json.
     """
@@ -161,9 +159,7 @@ def _encode_datetime(obj: datetime.datetime, canonical: bool) -> dict:
     timespec = "milliseconds" if obj.microsecond != 0 else "seconds"
     dts = obj.isoformat(sep="T", timespec=timespec)
     dts = dts.replace("+00:00", "Z")  # We ASSUME that 0-offset means UTC...
-    return {
-        "$date": dts
-    }
+    return {"$date": dts}
 
 
 def _encode_bytes(obj: bytes, canonical: bool) -> dict:
@@ -219,9 +215,7 @@ def _get_as_binary_or_uuid(data: Any, subtype: int) -> Union[bytes, uuid.UUID]:
     return data
 
 
-def _parse_canonical_datetime(
-    doc: Any
-) -> datetime.datetime:
+def _parse_canonical_datetime(doc: Any) -> datetime.datetime:
     """Decode a JSON datetime to python datetime.datetime."""
     dtm = doc["$date"]
     if len(doc) != 1:
@@ -326,6 +320,7 @@ def _millis_to_datetime(
 
 
 # HIGH LEVEL UTILITIES #
+
 
 def dumps(obj: Any, *args: Any, **kwargs: Any) -> str:
     """Helper function that wraps :func:`json.dumps`.
