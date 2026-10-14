@@ -393,6 +393,14 @@ def test_extended_json_subclass_encode_decode():
             assert roundtrip_obj == basic_obj
             assert roundtrip_obj == my_obj
 
+    # Subclasses overriding their text representation must not alter the canonical output
+    for cls, value in [(int, 1), (int, 2 << 60), (float, 1.5)]:
+        overrides = {"__repr__": lambda self: "custom", "__str__": lambda self: "custom"}
+        my_obj = type(f"MyCustom{cls.__name__}", (cls,), overrides)(value)
+        converted = convert_to_extjson(my_obj, canonical=True)
+        assert converted == convert_to_extjson(value, canonical=True)
+        assert convert_from_extjson(converted) == value
+
 
 def test_extended_json_specific_cases():
 
@@ -431,6 +439,17 @@ def test_extended_json_specific_cases():
     # UNCHANGED in relaxed mode, but under a different timezone format:
     assert other_date_3.tzinfo == timezone(timedelta(days=-1, seconds=48540))
 
+    # Only a zero offset becomes "Z", not offsets starting with "+00:00" but having seconds
+    assert convert_to_extjson(datetime(2020, 1, 1, tzinfo=timezone.utc), canonical=False) == {
+        "$date": "2020-01-01T00:00:00Z"
+    }
+    seconds_offset_date = datetime(2020, 1, 1, tzinfo=timezone(timedelta(seconds=30)))
+    seconds_offset_extjson = convert_to_extjson(seconds_offset_date, canonical=False)
+    assert seconds_offset_extjson == {"$date": "2020-01-01T00:00:00+00:00:30"}
+    seconds_offset_date_2 = convert_from_extjson(seconds_offset_extjson)
+    assert seconds_offset_date_2 == seconds_offset_date
+    assert seconds_offset_date_2.utcoffset() == timedelta(seconds=30)
+
     # Check that microseconds are not entirely preserved in roundtrips
     for canonical_mode in [True, False]:
         # Negative timestamp compared to EPOCH
@@ -441,7 +460,7 @@ def test_extended_json_specific_cases():
         assert precise_date_2.microsecond == 16000  # Floored number
 
         # Positive timestamp compared to EPOCH
-        precise_date = datetime(1876, 12, 18, microsecond=16343, tzinfo=pytz.utc)
+        precise_date = datetime(2024, 12, 18, microsecond=16343, tzinfo=pytz.utc)
         _extjson = convert_to_extjson(precise_date, canonical=canonical_mode)
         precise_date_2 = convert_from_extjson(_extjson)
         assert precise_date_2 != precise_date

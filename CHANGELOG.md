@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Relaxed-mode `$date` encoding no longer corrupts UTC offsets having seconds (e.g. `+00:00:30` was
+  turned into the undecodable `Z:30`).
+- Canonical `$numberInt`/`$numberLong`/`$numberDouble` encoding no longer uses the custom
+  `__str__`/`__repr__` of int and float subclasses (e.g. `numpy.float64` under NumPy 2), which
+  produced undecodable values.
+
 ## [0.2.0] - 2026-10-14
 
 ### Breaking changes
