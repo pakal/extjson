@@ -9,8 +9,8 @@ On top of standard JSON types, it supports:
 - `datetime.datetime` (timezone-aware only)
 - `bytes`
 - `uuid.UUID`
-- `decimal.Decimal`
-- special floating-point values (`NaN`, `Infinity`, `-Infinity`)
+- `decimal.Decimal` (where available)
+- special floating-point values (`NaN`, `Infinity`, `-Infinity`), as standard-compliant `$numberDouble` wrappers
 
 It only implements a subset of the Extended JSON specification, see
 [Supported Extended JSON wrappers](#supported-extended-json-wrappers).
