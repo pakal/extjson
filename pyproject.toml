@@ -12,7 +12,7 @@ readme = "README.md"
 requires-python = ">=3.11"
 keywords = ["json", "extended json", "extjson", "bson", "mongodb", "serialization", "datetime", "uuid", "decimal"]
 classifiers = [
-    "Development Status :: 4 - Beta",
+    "Development Status :: 5 - Production/Stable",
     "Intended Audience :: Developers",
     "Operating System :: OS Independent",
     "Programming Language :: Python",
