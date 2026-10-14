@@ -469,6 +469,29 @@ def test_extended_json_specific_cases():
         assert precise_date_2.microsecond == 16000  # Floored number
 
 
+def test_decimal_special_values_round_trip():
+    # Decimal has its own Infinity/-Infinity/NaN/-NaN, distinct from the float ones,
+    # and $numberDecimal always uses the canonical (str()) representation in both modes.
+    for canonical_mode in [True, False]:
+        for value, expected_str in [
+            (Decimal("Infinity"), "Infinity"),
+            (Decimal("-Infinity"), "-Infinity"),
+            (Decimal("NaN"), "NaN"),
+            (Decimal("-NaN"), "-NaN"),
+        ]:
+            ext_json = convert_to_extjson(value, canonical=canonical_mode)
+            assert ext_json == {"$numberDecimal": expected_str}
+
+            decoded = convert_from_extjson(ext_json)
+            assert isinstance(decoded, Decimal)
+            if value.is_nan():
+                assert decoded.is_nan()
+                assert decoded.is_signed() == value.is_signed()  # NaN vs -NaN
+            else:
+                assert decoded.is_infinite()
+                assert decoded == value  # Infinity/-Infinity compare equal to themselves
+
+
 def test_extended_json_datetime_truncation_consistency_for_distant_years():
     # Float timestamps lack sub-millisecond precision for such years, so they must not be used
     for year in (1, 1876, 1970, 2024, 5000, 9999):
