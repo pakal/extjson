@@ -24,6 +24,9 @@ Note that the parser will transparently decode both formats.
 
 For the complete Extended JSON specification, see https://www.mongodb.com/docs/languages/python/pymongo-driver/current/data-formats/extended-json/
 
+Note that `extjson` only implements a subset of that specification — see
+[Supported Extended JSON wrappers](#supported-extended-json-wrappers) below.
+
 ## Installation
 
 Install from PyPI:
@@ -120,12 +123,40 @@ Alas, Python's JSON encoder handles e.g. some floating-point values (`NaN`, `Inf
 with its own built-in logic, so a `default` callback is not a reliable place to add Extended 
 JSON wrappers, while still preserving predictable round-tripping.
 
+## Supported Extended JSON wrappers
+
+Only the following `$`-wrappers are recognized on decoding; any other single-key dict
+(e.g. `$oid`, `$regex`, `$code`, `$timestamp`, `$minKey`/`$maxKey`, `$dbPointer`, `$symbol`)
+is left untouched, as `extjson` does not target full MongoDB/BSON compatibility:
+
+| Wrapper | Decodes to | Encoded by |
+|---|---|---|
+| `$date` (string or `{"$numberLong": ...}`) | timezone-aware `datetime.datetime` (UTC) | `datetime.datetime` |
+| `$binary` (`subType` `"00"`) | `bytes` | `bytes` |
+| `$binary` (`subType` `"04"`) | `uuid.UUID` | `uuid.UUID` (canonical mode) |
+| `$uuid` | `uuid.UUID` | `uuid.UUID` (relaxed mode) |
+| `$numberInt` / `$numberLong` | `int` | `int` (canonical mode) |
+| `$numberDouble` | `float` (including `NaN`/`Infinity`/`-Infinity`) | `float` |
+| `$numberDecimal` | `decimal.Decimal` | `decimal.Decimal` |
+| `$undefined` | `None` | *(not encoded; `None` always encodes to JSON `null`)* |
+
+Other `$binary` subtypes (e.g. legacy UUID subtype `03`) raise `TypeError` on decoding.
+
 ## Notes and behavior details
 
 - When encoding, datetimes must be timezone-aware. 
 - Decoded datetimes are normalized to UTC timezone.
 - When encoding, tuples are treated as JSON arrays (same as lists).
 - `NaN` values round-trip, but `NaN != NaN` still applies in Python comparisons.
+- `bytes` and `decimal.Decimal` are always encoded using their canonical wrapper
+  (`$binary`/`$numberDecimal`), regardless of the `canonical` mode, since Extended JSON
+  has no relaxed form for them.
+- Values of unsupported Python types (e.g. `datetime.timedelta`) are passed through
+  unchanged, so the underlying `json.dumps()` call ultimately raises its own
+  `TypeError: ... not JSON serializable`.
+- `extjson.py` has no third-party dependencies and degrades gracefully on MicroPython
+  (where `decimal` may be unavailable, and `sort_keys` is skipped for the
+  `dump_to_json_*` helpers).
 
 ## License
 
