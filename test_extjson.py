@@ -1,3 +1,4 @@
+import binascii
 import copy
 import decimal
 import math
@@ -17,6 +18,7 @@ import pytz
 
 sys.path.append(os.path.dirname(__file__))
 
+import extjson
 from extjson import (
     convert_from_extjson,
     convert_to_extjson,
@@ -460,7 +462,7 @@ def test_extended_json_undecodable_payloads():
         {"$numberDecimal": "something", "somekey": True},
     ]
     for skipped_payload in skipped_payloads:
-        assert convert_to_extjson(skipped_payload, canonical=_random_bool()) == skipped_payload
+        assert convert_from_extjson(skipped_payload) == skipped_payload
 
     broken_payloads = [
         {"$date": 3.12},
@@ -495,6 +497,43 @@ def test_extended_json_undecodable_payloads():
                 }
             },
         )
+
+    # Single-digit subTypes are accepted too
+    assert convert_from_extjson({"$binary": {"base64": "KbkXmXJJQmaoU4ASPX/WhA==", "subType": "4"}}) == uuid.UUID(
+        "29b91799-7249-4266-a853-80123d7fd684"
+    )
+
+    # Well-typed but malformed values let the underlying parser errors propagate
+    with pytest.raises(binascii.Error):
+        convert_from_extjson({"$binary": {"base64": "QUI", "subType": "00"}})  # Bad padding
+    with pytest.raises(ValueError, match="16"):
+        convert_from_extjson({"$binary": {"base64": "QUI=", "subType": "04"}})  # Not 16 bytes
+    with pytest.raises(ValueError, match="base 16"):
+        convert_from_extjson({"$binary": {"base64": "QUI=", "subType": "zz"}})
+    with pytest.raises(ValueError, match="UUID"):
+        convert_from_extjson({"$uuid": "nope"})
+    with pytest.raises(ValueError, match="base 10"):
+        convert_from_extjson({"$numberInt": "1.5"})
+    with pytest.raises(decimal.InvalidOperation):
+        convert_from_extjson({"$numberDecimal": "abc"})
+
+
+def test_extended_json_int32_int64_boundaries():
+    int32_values = [-(2**31), -1, 0, 2**31 - 1]
+    int64_values = [-(2**31) - 1, 2**31, 2**63 - 1, -(2**63)]
+
+    for value in int32_values:
+        assert convert_to_extjson(value, canonical=True) == {"$numberInt": str(value)}
+    for value in int64_values:
+        assert convert_to_extjson(value, canonical=True) == {"$numberLong": str(value)}
+
+    for value in int32_values + int64_values:
+        assert convert_to_extjson(value, canonical=False) == value  # Never wrapped in relaxed mode
+        for canonical_mode in [True, False]:
+            assert convert_from_extjson(convert_to_extjson(value, canonical=canonical_mode)) == value
+
+    # Booleans are not encoded as integers, despite being an int subclass
+    assert convert_to_extjson([True, False], canonical=True) == [True, False]
 
 
 def test_extended_json_decode_invalid_date():
@@ -663,6 +702,17 @@ def test_json_serialization_high_level_utilities(tmp_path):
 
     utcoffset = deserialized["date"].utcoffset()
     assert utcoffset == timedelta(0)  # Date is returned as UTC in any case!
+
+
+def test_json_serialization_sort_keys_handling(monkeypatch):
+    payload = {"b": 1, "a": 2}
+
+    assert dump_to_json_str(payload) == '{"a": 2, "b": 1}'  # Sorted by default
+    assert dump_to_json_str(payload, sort_keys=False) == '{"b": 1, "a": 2}'  # Can be overridden
+
+    # Micropython's json module doesn't support sort_keys, so it's not set there
+    monkeypatch.setattr(extjson, "IS_MICROPYTHON", True)
+    assert dump_to_json_str(payload) == '{"b": 1, "a": 2}'
 
 
 def test_json_serialization_low_level_utilities():
