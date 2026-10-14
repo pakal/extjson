@@ -7,27 +7,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Fixed
-
-- MicroPython: `$date` decoding now handles ISO strings ending in `Z` (micropython-lib's
-  `datetime.fromisoformat` doesn't support that suffix), and `$uuid` decoding now goes through
-  `uuid.UUID(bytes=...)` (micropython-lib's `uuid.UUID` doesn't accept hex strings directly).
-- MicroPython: canonical `$date` values are no longer shifted by 30 years on ports whose epoch is
-  2000-01-01 (the Unix epoch is no longer built with `fromtimestamp(0)`).
-- MicroPython: the module now imports without the `typing` module.
-- MicroPython: canonical `$numberDouble` encoding falls back to `"%.17g"` when `repr()` doesn't
-  round-trip the float.
-- MicroPython: decoding a `$numberDecimal` without any `decimal` module now raises an explicit
-  `ImportError` instead of a confusing `TypeError`.
-- MicroPython: `$uuid` decoding now accepts the same `{...}` and `urn:uuid:` forms as CPython, and
-  rejects wrong-length strings with the same `ValueError`.
-- `load_from_json_bytes` and `load_from_json_file` now ignore a leading UTF-8 byte-order mark (BOM).
-- Relaxed-mode `$date` encoding no longer corrupts UTC offsets having seconds (e.g. `+00:00:30` was
-  turned into the undecodable `Z:30`).
-- Canonical `$numberInt`/`$numberLong`/`$numberDouble` encoding no longer uses the custom
-  `__str__`/`__repr__` of int and float subclasses (e.g. `numpy.float64` under NumPy 2), which
-  produced undecodable values.
-
 ## [0.2.0] - 2026-10-14
 
 ### Breaking changes
@@ -53,6 +32,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - A `$binary` wrapper that is not a dict with exactly the `base64` and `subType` keys now raises an
   explicit `TypeError` (previously a `KeyError` or a less explicit `TypeError`).
 - The license metadata now uses an SPDX expression (`license = "MIT"`).
+
+### Fixed
+
+- MicroPython: `$date` decoding now handles ISO strings ending in `Z` (micropython-lib's
+  `datetime.fromisoformat` doesn't support that suffix), and `$uuid` decoding now goes through
+  `uuid.UUID(bytes=...)` (micropython-lib's `uuid.UUID` doesn't accept hex strings directly).
+- MicroPython: canonical `$date` values are no longer shifted by 30 years on ports whose epoch is
+  2000-01-01 (the Unix epoch is no longer built with `fromtimestamp(0)`).
+- MicroPython: the module now imports without the `typing` module.
+- MicroPython: canonical `$numberDouble` encoding falls back to `"%.17g"` when `repr()` doesn't
+  round-trip the float.
+- MicroPython: decoding a `$numberDecimal` without any `decimal` module now raises an explicit
+  `ImportError` instead of a confusing `TypeError`.
+- MicroPython: `$uuid` decoding now accepts the same `{...}` and `urn:uuid:` forms as CPython, and
+  rejects wrong-length strings with the same `ValueError`.
+- `load_from_json_bytes` and `load_from_json_file` now ignore a leading UTF-8 byte-order mark (BOM).
+- Relaxed-mode `$date` encoding no longer corrupts UTC offsets having seconds (e.g. `+00:00:30` was
+  turned into the undecodable `Z:30`).
+- Canonical `$numberInt`/`$numberLong`/`$numberDouble` encoding no longer uses the custom
+  `__str__`/`__repr__` of int and float subclasses (e.g. `numpy.float64` under NumPy 2), which
+  produced undecodable values.
 
 ### Documentation
 
