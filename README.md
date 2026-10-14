@@ -1,35 +1,21 @@
 # extjson
 
-The `extjson` library is a small Python module for serializing and deserializing data to/from JSON,
-following MongoDB Extended JSON conventions.
+The `extjson` library is a small, dependency-free Python module for serializing and deserializing data
+to/from JSON, following [MongoDB Extended JSON](https://www.mongodb.com/docs/languages/python/pymongo-driver/current/data-formats/extended-json/)
+conventions.
 
-It currently adds support for these common types:
+On top of standard JSON types, it supports:
 
-- `datetime.datetime` (timezone-aware)
+- `datetime.datetime` (timezone-aware only)
 - `bytes`
 - `uuid.UUID`
 - `decimal.Decimal`
 - special floating-point values (`NaN`, `Infinity`, `-Infinity`)
 
-For naive datetimes, or for separate dates/times, use JSON strings with your own formatting (e.g. `isoformat()`).
-
-Serialization can be done in two modes:
-- **Relaxed mode** (default): use native JSON numbers, iso-formatted dates, and simple
-  `$uuid` wrappers, wherever possible.
-- **Canonical mode**: use strict Extended JSON wrappers such as
-  `$numberInt`, `$numberLong`, `$numberDouble`, `$binary`... for every value.
-  Much less readable, but more straightforward to parse.
-
-Note that the parser will transparently decode both formats.
-
-For the complete Extended JSON specification, see https://www.mongodb.com/docs/languages/python/pymongo-driver/current/data-formats/extended-json/
-
-Note that `extjson` only implements a subset of that specification — see
-[Supported Extended JSON wrappers](#supported-extended-json-wrappers) below.
+It only implements a subset of the Extended JSON specification, see
+[Supported Extended JSON wrappers](#supported-extended-json-wrappers).
 
 ## Installation
-
-Install from PyPI:
 
 ```bash
 pip install extjson
@@ -51,7 +37,7 @@ payload = {
     "raw": b"hello",
 }
 
-ext_doc = convert_to_extjson(payload)
+ext_doc = convert_to_extjson(payload)  # JSON-compatible tree of dicts/lists/scalars
 roundtrip = convert_from_extjson(ext_doc)
 
 assert roundtrip == payload
@@ -59,29 +45,36 @@ assert roundtrip == payload
 
 ## Canonical vs relaxed mode
 
-Use `convert_to_extjson(..., canonical=True|False)`:
+All encoding functions take a `canonical` argument:
+
+- **Relaxed mode** (`canonical=False`, the default): uses native JSON numbers, ISO-formatted dates
+  and simple `$uuid` wrappers wherever possible. More readable.
+- **Canonical mode** (`canonical=True`): wraps every number, date and UUID in a strict, type-preserving
+  wrapper (`$numberInt`, `$numberLong`, `$numberDouble`, `$date` with `$numberLong`, `$binary`...).
+  Less readable, but unambiguous to parse.
+
+Strings, booleans and `None` are left as-is in both modes. The decoder transparently accepts both formats.
 
 ```python
 from extjson import convert_to_extjson
 
-print(convert_to_extjson(42, canonical=True))   # {'$numberInt': '42'}
-print(convert_to_extjson(42, canonical=False))  # 42
+print(convert_to_extjson(42))                  # 42
+print(convert_to_extjson(42, canonical=True))  # {'$numberInt': '42'}
 ```
-
-The default is `canonical=False` (relaxed mode).
 
 ## High-level JSON helpers
 
-If you want to handle JSON strings/bytes/files directly, use the helper API:
+To handle JSON strings, bytes or files directly:
 
-- `dumps(obj, **json_kwargs)` / `loads(data, **json_kwargs)`: replacements for stdlib JSON functions
-- `dump_to_json_str(data, **json_kwargs)` / `load_from_json_str(data, **json_kwargs)`: same as above, but 
-  preconfigured for reproducibility (e.g. `sort_keys=True`)
-- `dump_to_json_bytes(data, **json_kwargs)` / `load_from_json_bytes(data, **json_kwargs)`
-- `dump_to_json_file(path, data, **json_kwargs)` / `load_from_json_file(path, **json_kwargs)`
+| Encoding | Decoding | Notes |
+|---|---|---|
+| `dumps(obj, **json_kwargs)` | `loads(data, **json_kwargs)` | Drop-in replacements for `json.dumps`/`json.loads` |
+| `dump_to_json_str(data, **json_kwargs)` | `load_from_json_str(data, **json_kwargs)` | Same, with `sort_keys=True` by default for reproducible output |
+| `dump_to_json_bytes(data, **json_kwargs)` | `load_from_json_bytes(data, **json_kwargs)` | UTF-8 encoded `bytes` |
+| `dump_to_json_file(path, data, **json_kwargs)` | `load_from_json_file(path, **json_kwargs)` | UTF-8 file; `dump_to_json_file` also returns the written bytes |
 
-All these functions accept a `canonical=True|False` argument (default: `False`), and forward the rest to the
-underlying `json` functions (e.g. `indent=2` for pretty-printing).
+Encoding functions accept the `canonical` argument; all functions forward the remaining keyword
+arguments to the underlying `json.dumps`/`json.loads` (e.g. `indent=2` for pretty-printing).
 
 ```python
 import uuid
@@ -89,16 +82,16 @@ from extjson import dump_to_json_str, load_from_json_str
 
 payload = {"name": "hello", "blob": b"xyz", "uid": uuid.uuid4()}
 
-json_text = dump_to_json_str(payload)
+json_text = dump_to_json_str(payload, indent=2)
 back = load_from_json_str(json_text)
 
 assert back == payload
 ```
 
-## Using extjson's object_hook with stdlib's `json.loads`
+## Decoding with stdlib `json.loads`
 
-If you already use Python's stdlib `json` module, you can lazily decode 
-Extended JSON by passing `extjson_decoder_object_hook` as `object_hook`.
+If you already use Python's stdlib `json` module, you can decode Extended JSON on the fly
+by passing `extjson_decoder_object_hook` as `object_hook`:
 
 ```python
 import json
@@ -112,16 +105,10 @@ print(decoded)
 # {'uid': UUID('7c0b18f5-f410-4e83-9263-b38c2328e516'), 'blob': b'xyz'}
 ```
 
-This hook is for decoding. For encoding, use `convert_to_extjson(...)` or `dumps(...)`.
-
-## Why no `json.dumps(default=...)` hook?
-
-To avoid converting the whole object tree with `convert_to_extjson(...)`, one might be tempted 
-to use a `default` callback passed to `json.dumps`, for encoding values in relaxed mode.
-
-Alas, Python's JSON encoder handles e.g. some floating-point values (`NaN`, `Infinity`, `-Infinity`)
-with its own built-in logic, so a `default` callback is not a reliable place to add Extended 
-JSON wrappers, while still preserving predictable round-tripping.
+There is no encoding counterpart (i.e. no `json.dumps(default=...)` hook): Python's JSON encoder
+handles some values (e.g. `NaN` and infinite floats) with its own built-in logic, without ever calling
+`default`, so such a hook could not reliably emit Extended JSON wrappers. Use `convert_to_extjson(...)`
+or `dumps(...)` instead.
 
 ## Supported Extended JSON wrappers
 
@@ -129,36 +116,51 @@ Only the following `$`-wrappers are recognized on decoding; any other single-key
 (e.g. `$oid`, `$regex`, `$code`, `$timestamp`, `$minKey`/`$maxKey`, `$dbPointer`, `$symbol`)
 is left untouched, as `extjson` does not target full MongoDB/BSON compatibility:
 
-| Wrapper | Decodes to | Encoded by |
+| Wrapper | Decodes to | Encoded from |
 |---|---|---|
-| `$date` (string or `{"$numberLong": ...}`) | timezone-aware `datetime.datetime` (UTC) | `datetime.datetime` |
-| `$binary` (`subType` `"00"`) | `bytes` | `bytes` |
+| `$date` (ISO string) | `datetime.datetime`, with the offset given in the string | `datetime.datetime` (relaxed mode) |
+| `$date` (`{"$numberLong": ...}` milliseconds) | `datetime.datetime` in UTC | `datetime.datetime` (canonical mode) |
+| `$binary` (`subType` `"00"`) | `bytes` | `bytes` (both modes) |
 | `$binary` (`subType` `"04"`) | `uuid.UUID` | `uuid.UUID` (canonical mode) |
 | `$uuid` | `uuid.UUID` | `uuid.UUID` (relaxed mode) |
-| `$numberInt` / `$numberLong` | `int` | `int` (canonical mode) |
-| `$numberDouble` | `float` (including `NaN`/`Infinity`/`-Infinity`) | `float` |
-| `$numberDecimal` | `decimal.Decimal` | `decimal.Decimal` |
-| `$undefined` | `None` | *(not encoded; `None` always encodes to JSON `null`)* |
+| `$numberInt` / `$numberLong` | `int` | `int` (canonical mode; `$numberInt` within the 32-bit range, else `$numberLong`) |
+| `$numberDouble` | `float` | `float` (canonical mode; also relaxed mode for `NaN`/`Infinity`/`-Infinity`) |
+| `$numberDecimal` | `decimal.Decimal` | `decimal.Decimal` (both modes) |
+| `$undefined` | `None` | *(never; `None` always encodes to JSON `null`)* |
 
-Other `$binary` subtypes (e.g. legacy UUID subtype `03`) raise `TypeError` on decoding.
+`bytes` and `decimal.Decimal` use the same wrapper in both modes, because Extended JSON has no relaxed
+form for them.
+
+A recognized wrapper with an invalid payload (e.g. `{"$numberInt": 42}`, or a `$binary` subtype other
+than `00`/`04`, such as the legacy UUID subtype `03`) raises `TypeError` on decoding.
 
 ## Notes and behavior details
 
-- When encoding, datetimes must be timezone-aware. 
-- Decoded datetimes are normalized to UTC timezone.
-- When encoding, tuples are treated as JSON arrays (same as lists).
+- Datetimes are truncated to millisecond precision in both modes, so microseconds are lost on round-trip.
+- Naive datetimes raise `TypeError`, both when encoding a `datetime` and when decoding a `$date` string
+  without an offset. For naive datetimes, or separate dates/times, store your own formatted strings
+  (e.g. `isoformat()`) instead.
+- In relaxed mode, a zero UTC offset is written as `Z`; other offsets are preserved.
+- Tuples are encoded as JSON arrays, and therefore decode as lists.
 - `NaN` values round-trip, but `NaN != NaN` still applies in Python comparisons.
-- `bytes` and `decimal.Decimal` are always encoded using their canonical wrapper
-  (`$binary`/`$numberDecimal`), regardless of the `canonical` mode, since Extended JSON
-  has no relaxed form for them.
-- Values of unsupported Python types (e.g. `datetime.timedelta`) are passed through
-  unchanged, so the underlying `json.dumps()` call ultimately raises its own
-  `TypeError: ... not JSON serializable`.
-- `extjson.py` has no third-party dependencies and degrades gracefully on MicroPython
-  (where `decimal` may be unavailable, and `sort_keys` is skipped for the
-  `dump_to_json_*` helpers).
+- Dict keys are not converted, so only `json`-compatible keys work.
+- Subclasses of supported types (e.g. `enum.IntEnum`) are encoded like their base type and decode as
+  that base type.
+- Values of other types (e.g. `datetime.timedelta`) are passed through unchanged, so `json.dumps()`
+  raises its usual `TypeError: ... not JSON serializable`, unless you pass your own `default=` callback
+  to `dumps(...)` or the `dump_to_json_*` helpers.
+- `extjson.py` degrades gracefully on MicroPython, where `decimal` may be unavailable and `sort_keys`
+  is not applied by the `dump_to_json_*` helpers.
+
+## Development
+
+```bash
+poetry install
+poetry run pytest test_extjson.py   # current interpreter
+poetry run tox                      # all supported Python versions
+poetry run ruff check . && poetry run ruff format --check .
+```
 
 ## License
 
-MIT
-
+MIT, see [LICENSE](LICENSE).
