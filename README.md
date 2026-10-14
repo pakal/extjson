@@ -191,4 +191,4 @@ poetry run ruff check . && poetry run ruff format --check .
 
 ## License
 
-MIT, see [LICENSE](LICENSE).
+MIT, see [LICENSE](https://github.com/pakal/extjson/blob/main/LICENSE).
