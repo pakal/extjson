@@ -466,6 +466,8 @@ def test_extended_json_undecodable_payloads():
 
     broken_payloads = [
         {"$date": 3.12},
+        {"$date": True},  # Not mistaken for a millisecond int
+        {"$date": False},
         {"$binary": 42},
         {"$binary": {"badkey": True}},
         {"$binary": {"base64": "736", "subType": "00", "badkey": True}},

@@ -237,7 +237,7 @@ def _parse_canonical_datetime(doc: Any) -> datetime.datetime:
     Canonical dates are always returned as UTC, whereas isoformat strings are
     returned with their indicated timezone (which MUST exist)."""
     dtm = doc["$date"]
-    if not isinstance(dtm, (str, int)):
+    if not isinstance(dtm, (str, int)) or isinstance(dtm, bool):  # Beware, bool is a subclass of int
         raise TypeError(f"Date must be iso string or millisecond int: {doc}")
     if isinstance(dtm, str):
         res = datetime.datetime.fromisoformat(dtm)
