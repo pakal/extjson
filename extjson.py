@@ -20,7 +20,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 """
 
-from __future__ import annotations
+from __future__ import annotations  # Keeps annotations unevaluated, and is a no-op on Micropython
 
 import binascii
 import datetime
@@ -28,27 +28,35 @@ import json
 import math
 import sys
 import uuid
-from typing import (
-    Any,
-    Callable,
-    Mapping,
-    Type,
-    Union,
-)
+
+try:
+    from typing import (
+        Any,
+        Callable,
+        Mapping,
+        Type,
+        Union,
+    )
+except ImportError:
+    # E.g. on Micropython without micropython-lib's typing, where annotations are ignored anyway
+    pass
+
+
+class _FakeDecimal:
+    pass
+
 
 try:
     from decimal import Decimal
 except ImportError:
-    # E.g. on Micropython
-    class _FakeDecimal:
-        pass
-
+    # E.g. on Micropython without a port of decimal
     Decimal = _FakeDecimal
 
 
 _INT32_MAX = 2**31
 
 UTF8_ENCODING = "utf8"
+UTF8_BOM = b"\xef\xbb\xbf"
 
 IS_MICROPYTHON = sys.implementation.name == "micropython"
 
@@ -153,10 +161,15 @@ def _encode_float(obj: float, canonical: bool) -> Any:
         representation = "Infinity" if obj > 0 else "-Infinity"
         return {"$numberDouble": representation}
     elif canonical:
-        # repr() will return the shortest string guaranteed to produce the
-        # original value, when float() is called on it. float() strips subclasses,
+        # On CPython, repr() returns the shortest string guaranteed to produce the
+        # original value when float() is called on it, but Micropython's repr() may
+        # lose digits, hence the "%.17g" fallback. float() strips subclasses,
         # whose __repr__ might be overridden (e.g. numpy.float64).
-        return {"$numberDouble": repr(float(obj))}
+        value = float(obj)
+        representation = repr(value)
+        if float(representation) != value:
+            representation = "%.17g" % value
+        return {"$numberDouble": representation}
     return obj
 
 
@@ -282,6 +295,8 @@ def _parse_canonical_decimal(doc: Any) -> Decimal:
     d_str = doc["$numberDecimal"]
     if not isinstance(d_str, str):
         raise TypeError(f"$numberDecimal must be string: {doc}")
+    if Decimal is _FakeDecimal:
+        raise ImportError(f"No 'decimal' module available to decode $numberDecimal: {doc}")
     return Decimal(d_str)
 
 
@@ -292,8 +307,13 @@ def _parse_legacy_uuid(doc: Any) -> Union[bytes, uuid.UUID]:
         raise TypeError(f"$uuid must be a string: {doc}")
     if IS_MICROPYTHON:
         # micropython-lib's uuid.UUID stub only accepts a raw 16-byte buffer,
-        # unlike CPython's uuid.UUID which parses hex strings directly.
-        data = binascii.unhexlify(hex_str.replace("-", ""))
+        # unlike CPython's uuid.UUID which parses hex strings directly,
+        # so we mimic CPython's normalization of these strings.
+        hex_str = hex_str.replace("urn:", "").replace("uuid:", "")
+        hex_str = hex_str.strip("{}").replace("-", "")
+        if len(hex_str) != 32:
+            raise ValueError("badly formed hexadecimal UUID string")
+        data = binascii.unhexlify(hex_str)
         return uuid.UUID(bytes=data)
     return uuid.UUID(hex_str)
 
@@ -310,7 +330,8 @@ _PARSERS: dict[str, Callable[[Any], Any]] = {
 }
 
 
-_EPOCH_AWARE = datetime.datetime.fromtimestamp(0, datetime.timezone.utc)
+# Not built with fromtimestamp(0), since some Micropython ports use 2000-01-01 as their epoch
+_EPOCH_AWARE = datetime.datetime(1970, 1, 1, tzinfo=datetime.timezone.utc)
 
 
 def _is_aware_datetime(dt: datetime.datetime) -> bool:
@@ -409,7 +430,10 @@ def dump_to_json_bytes(data, **extra_options):
 def load_from_json_bytes(data, **extra_options):
     """
     Same as `load_from_json_str`, but takes UTF8-encoded bytes as input.
+    A leading UTF8 byte-order mark (BOM) is ignored.
     """
+    if data[: len(UTF8_BOM)] == UTF8_BOM:  # Micropython has no "utf-8-sig" codec
+        data = data[len(UTF8_BOM) :]
     json_str = data.decode(UTF8_ENCODING)
     return load_from_json_str(data=json_str, **extra_options)
 

@@ -154,8 +154,12 @@ milliseconds, and `decimal.InvalidOperation` for an invalid `$numberDecimal`.
 - Values of other types (e.g. `datetime.timedelta`) are passed through unchanged, so `json.dumps()`
   raises its usual `TypeError: ... not JSON serializable`, unless you pass your own `default=` callback
   to `dumps(...)` or the `dump_to_json_*` helpers.
-- `extjson.py` degrades gracefully on MicroPython, where `decimal` may be unavailable and `sort_keys`
-  is not applied by the `dump_to_json_*` helpers.
+- `load_from_json_bytes` and `load_from_json_file` ignore a leading UTF-8 byte-order mark (BOM).
+- `extjson.py` degrades gracefully on MicroPython:
+  - it imports even without the `typing` and `decimal` modules;
+  - if no `decimal` port is installed, decoding a `$numberDecimal` raises `ImportError`;
+  - `sort_keys` is not applied by the `dump_to_json_*` helpers;
+  - on single-precision float builds, `$numberDouble` values can't round-trip exactly.
 
 ## Development
 

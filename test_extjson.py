@@ -1,10 +1,12 @@
 import binascii
 import copy
 import decimal
+import importlib.util
 import math
 import os
 import random
 import sys
+import types
 import uuid
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal
@@ -621,16 +623,88 @@ def test_micropython_specific_uuid_and_datetime_decode(monkeypatch):
     expected_uid = uuid.UUID("29b91799-7249-4266-a853-80123d7fd684")
     assert convert_from_extjson({"$uuid": "29b9179972494266a85380123d7fd684"}) == expected_uid
     assert convert_from_extjson({"$uuid": "29b91799-7249-4266-a853-80123d7fd684"}) == expected_uid  # Dashes tolerated
+    # Same alternative forms as CPython's uuid.UUID(str)
+    assert convert_from_extjson({"$uuid": "{29b91799-7249-4266-a853-80123d7fd684}"}) == expected_uid
+    assert convert_from_extjson({"$uuid": "urn:uuid:29b91799-7249-4266-a853-80123d7fd684"}) == expected_uid
 
-    # Malformed hex raises a different error type than on the CPython uuid.UUID(str) path
-    with pytest.raises(binascii.Error):
-        convert_from_extjson({"$uuid": "nope"})
+    # Malformed strings raise the same error as on the CPython uuid.UUID(str) path
+    for malformed_uuid in ["nope", "29b9179972494266a85380123d7fd6", "29b9179972494266a85380123d7fd684ab"]:
+        with pytest.raises(ValueError, match="badly formed"):
+            convert_from_extjson({"$uuid": malformed_uuid})
+    with pytest.raises(ValueError):  # Right length, but not hexadecimal
+        convert_from_extjson({"$uuid": "zzb9179972494266a85380123d7fd684"})
 
-    # Non-canonical "Z"-suffixed dates go through the "Z" -> "+00:00" substitution
+    # Non-canonical "Z"-suffixed dates go through the "Z" -> "+00:00" substitution;
+    # we simulate micropython-lib's fromisoformat, since CPython 3.11+ already supports "Z"
+    class _NoZDatetime(datetime):
+        @classmethod
+        def fromisoformat(cls, date_string):
+            if date_string.endswith("Z"):
+                raise ValueError(f"Invalid isoformat string: {date_string!r}")
+            return datetime.fromisoformat(date_string)
+
+    monkeypatch.setattr(
+        extjson, "datetime", types.SimpleNamespace(datetime=_NoZDatetime, timezone=timezone, timedelta=timedelta)
+    )
     expected_dt = datetime(2024, 1, 2, 3, 4, 5, tzinfo=timezone.utc)
     res = convert_from_extjson({"dt": {"$date": "2024-01-02T03:04:05Z"}})
     assert res["dt"] == expected_dt
     assert res["dt"].tzinfo  # Still aware
+
+
+def test_epoch_is_unix_epoch():
+    # Some Micropython ports use 2000-01-01 as epoch for fromtimestamp(), so it must not be used
+    assert extjson._EPOCH_AWARE == datetime(1970, 1, 1, tzinfo=timezone.utc)
+    assert convert_to_extjson(datetime(1970, 1, 1, 0, 0, 1, tzinfo=timezone.utc), canonical=True) == {
+        "$date": {"$numberLong": "1000"}
+    }
+
+
+def test_import_without_typing_and_decimal_modules(monkeypatch):
+    # Simulate a bare Micropython, lacking the typing and decimal modules
+    monkeypatch.setitem(sys.modules, "typing", None)
+    monkeypatch.setitem(sys.modules, "decimal", None)
+    spec = importlib.util.spec_from_file_location("extjson_stripped", extjson.__file__)
+    extjson_stripped = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(extjson_stripped)  # Not registered in sys.modules
+
+    assert extjson_stripped.Decimal is extjson_stripped._FakeDecimal
+
+    uid = uuid.UUID("29b91799-7249-4266-a853-80123d7fd684")
+    payload = {"a": [1, 2.5, "x"], "b": b"xyz", "c": uid, "d": datetime(2024, 1, 2, tzinfo=timezone.utc)}
+    for canonical in [True, False]:
+        assert extjson_stripped.load_from_json_str(extjson_stripped.dump_to_json_str(payload, canonical=canonical)) == (
+            payload
+        )
+
+    # Decimal values can't be decoded, but this only fails lazily, with an explicit error
+    with pytest.raises(ImportError, match="decimal"):
+        extjson_stripped.convert_from_extjson({"price": {"$numberDecimal": "1.5"}})
+
+
+def test_float_encoding_fallback_on_lossy_repr(monkeypatch):
+    # Simulate Micropython's repr(), which may not round-trip floats
+    monkeypatch.setattr(extjson, "repr", lambda value: "%.15g" % value, raising=False)
+
+    value = 0.1 + 0.2
+    encoded = convert_to_extjson(value, canonical=True)
+    assert encoded == {"$numberDouble": "0.30000000000000004"}
+    assert convert_from_extjson(encoded) == value
+
+    assert convert_to_extjson(1.5, canonical=True) == {"$numberDouble": "1.5"}  # Lossless repr is kept
+
+
+def test_load_json_with_utf8_bom(tmp_path):
+    json_bytes = b'\xef\xbb\xbf{"a": 1, "b": {"$uuid": "29b9179972494266a85380123d7fd684"}}'
+    expected = {"a": 1, "b": uuid.UUID("29b91799-7249-4266-a853-80123d7fd684")}
+
+    assert load_from_json_bytes(json_bytes) == expected
+    assert load_from_json_bytes(bytearray(json_bytes)) == expected
+
+    tmp_filepath = os.path.join(tmp_path, "bom_file.json")
+    with open(tmp_filepath, "wb") as f:
+        f.write(json_bytes)
+    assert load_from_json_file(tmp_filepath) == expected
 
 
 def test_json_serialization_high_level_utilities(tmp_path):
