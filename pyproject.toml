@@ -1,5 +1,5 @@
 [build-system]
-requires = ["poetry-core"]
+requires = ["poetry-core>=2.2.0,<3.0.0"]
 build-backend = "poetry.core.masonry.api"
 
 [project]
@@ -7,9 +7,9 @@ name = "extjson"
 version = "0.1.1"
 description = "Extended JSON serialization library supporting main BSON types (datetime, bytes, UUID, Decimal, …)"
 authors = [{name = "Pascal Chambon"}]
-license = {text = "MIT"}
+license = "MIT"
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 
 [project.urls]
 Repository = "https://github.com/pakal/extjson"
