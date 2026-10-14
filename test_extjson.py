@@ -591,6 +591,29 @@ def test_extended_json_decode_invalid_date():
             print("INVALID DATE PARSED:", res)
 
 
+def test_micropython_specific_uuid_and_datetime_decode(monkeypatch):
+    # These decode paths are only exercised on real MicroPython, where uuid.UUID
+    # and datetime.fromisoformat are thinner stubs than CPython's. Simulate
+    # IS_MICROPYTHON here (same pattern as test_json_serialization_sort_keys_handling)
+    # so they get covered under CPython CI too.
+    monkeypatch.setattr(extjson, "IS_MICROPYTHON", True)
+
+    # $uuid legacy decode goes through binascii.unhexlify(...) + uuid.UUID(bytes=...)
+    expected_uid = uuid.UUID("29b91799-7249-4266-a853-80123d7fd684")
+    assert convert_from_extjson({"$uuid": "29b9179972494266a85380123d7fd684"}) == expected_uid
+    assert convert_from_extjson({"$uuid": "29b91799-7249-4266-a853-80123d7fd684"}) == expected_uid  # Dashes tolerated
+
+    # Malformed hex raises a different error type than on the CPython uuid.UUID(str) path
+    with pytest.raises(binascii.Error):
+        convert_from_extjson({"$uuid": "nope"})
+
+    # Non-canonical "Z"-suffixed dates go through the "Z" -> "+00:00" substitution
+    expected_dt = datetime(2024, 1, 2, 3, 4, 5, tzinfo=timezone.utc)
+    res = convert_from_extjson({"dt": {"$date": "2024-01-02T03:04:05Z"}})
+    assert res["dt"] == expected_dt
+    assert res["dt"].tzinfo  # Still aware
+
+
 def test_json_serialization_high_level_utilities(tmp_path):
     uid = uuid.UUID("7c0b18f5-f410-4e83-9263-b38c2328e516")
     payload = dict(b=b"xyz", a="hêllo", c=uid)

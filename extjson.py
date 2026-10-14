@@ -136,8 +136,9 @@ def _encode_canonical_binary(data: bytes, subtype: int) -> Any:
 def _encode_int(obj: int, canonical: bool) -> Any:
     if canonical:
         if -_INT32_MAX <= obj < _INT32_MAX:
-            return {"$numberInt": str(obj)}
-        return {"$numberLong": str(obj)}
+            # int() strips subclasses, whose __str__ might be overridden
+            return {"$numberInt": str(int(obj))}
+        return {"$numberLong": str(int(obj))}
     return obj
 
 
@@ -153,8 +154,9 @@ def _encode_float(obj: float, canonical: bool) -> Any:
         return {"$numberDouble": representation}
     elif canonical:
         # repr() will return the shortest string guaranteed to produce the
-        # original value, when float() is called on it.
-        return {"$numberDouble": repr(obj)}
+        # original value, when float() is called on it. float() strips subclasses,
+        # whose __repr__ might be overridden (e.g. numpy.float64).
+        return {"$numberDouble": repr(float(obj))}
     return obj
 
 
@@ -173,7 +175,8 @@ def _encode_datetime(obj: datetime.datetime, canonical: bool) -> dict:
     # Note that Python doesn't support dates outside this 'YYYY' year range anyway
     timespec = "milliseconds" if obj.microsecond != 0 else "seconds"
     dts = obj.isoformat(sep="T", timespec=timespec)
-    dts = dts.replace("+00:00", "Z")  # We ASSUME that 0-offset means UTC...
+    if dts.endswith("+00:00"):  # Beware of offsets with seconds, like "+00:00:30"
+        dts = dts[:-6] + "Z"  # We ASSUME that 0-offset means UTC...
     return {"$date": dts}
 
 
