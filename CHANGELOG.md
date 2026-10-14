@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- MicroPython: `$date` decoding now handles ISO strings ending in `Z` (micropython-lib's
+  `datetime.fromisoformat` doesn't support that suffix), and `$uuid` decoding now goes through
+  `uuid.UUID(bytes=...)` (micropython-lib's `uuid.UUID` doesn't accept hex strings directly).
 - Relaxed-mode `$date` encoding no longer corrupts UTC offsets having seconds (e.g. `+00:00:30` was
   turned into the undecodable `Z:30`).
 - Canonical `$numberInt`/`$numberLong`/`$numberDouble` encoding no longer uses the custom
