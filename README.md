@@ -157,6 +157,7 @@ than `00`/`04`, such as the legacy UUID subtype `03`) raises `TypeError` on deco
 ```bash
 poetry install
 poetry run pytest test_extjson.py   # current interpreter
+poetry run pytest test_extjson.py --cov   # with branch coverage report
 poetry run tox                      # all supported Python versions
 poetry run ruff check . && poetry run ruff format --check .
 ```
