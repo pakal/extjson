@@ -21,6 +21,24 @@ It only implements a subset of the Extended JSON specification, see
 pip install extjson
 ```
 
+### MicroPython
+
+`extjson.py` is a single file: copy it to your device's `lib/` folder (e.g. `mpremote cp extjson.py :lib/`),
+or install it with `mip install github:pakal/extjson/extjson.py`.
+
+It also needs some [micropython-lib](https://github.com/micropython/micropython-lib) modules, unless your
+firmware already provides them:
+
+| Module       | Status    | Install with                                                  | Purpose                                        |
+|--------------|-----------|---------------------------------------------------------------|------------------------------------------------|
+| `__future__` | NECESSARY | `mip install __future__`                                      | `from __future__ import annotations` statement |
+| `datetime`   | NECESSARY | `mip install datetime`                                        | `$date` encoding/decoding                      |
+| `uuid`       | NECESSARY | `mip install uuid`                                            | `$uuid` and binary subtype 4 encoding/decoding |
+| `typing`     | OPTIONAL  | `mip install github:josverl/micropython-stubs/mip/typing.mpy` | Not used at runtime                            |
+| `decimal`    | OPTIONAL  | any third-party port providing `decimal.Decimal`              | `$numberDecimal` decoding (else `ImportError`) |
+
+On a device, run these as `mpremote mip install ...`. With the Unix port, run them as `micropython -m mip install ...`.
+
 ## Quick start
 
 ```python
@@ -155,7 +173,7 @@ milliseconds, and `decimal.InvalidOperation` for an invalid `$numberDecimal`.
   raises its usual `TypeError: ... not JSON serializable`, unless you pass your own `default=` callback
   to `dumps(...)` or the `dump_to_json_*` helpers.
 - `load_from_json_bytes` and `load_from_json_file` ignore a leading UTF-8 byte-order mark (BOM).
-- `extjson.py` degrades gracefully on MicroPython:
+- `extjson.py` degrades gracefully on MicroPython (see [MicroPython](#micropython) for required modules):
   - it imports even without the `typing` and `decimal` modules;
   - if no `decimal` port is installed, decoding a `$numberDecimal` raises `ImportError`;
   - `sort_keys` is not applied by the `dump_to_json_*` helpers;

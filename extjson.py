@@ -20,7 +20,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 """
 
-from __future__ import annotations  # Keeps annotations unevaluated, and is a no-op on Micropython
+from __future__ import annotations  # Keeps annotations unevaluated (Micropython needs micropython-lib's __future__)
 
 import binascii
 import datetime
