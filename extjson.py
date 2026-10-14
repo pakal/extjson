@@ -308,8 +308,9 @@ def _is_aware_datetime(dt: datetime.datetime) -> bool:
 def _aware_datetime_to_millis(dt: datetime.datetime) -> int:
     """Convert aware datetime to milliseconds since epoch UTC."""
     assert _is_aware_datetime(dt), f"Unsupported naive datetime encountered: {dt}"
-    timestamp_ms = dt.timestamp() * 1000
-    return math.floor(timestamp_ms)
+    # Integer arithmetic only, since float timestamps lack sub-millisecond precision for distant years
+    delta = dt - _EPOCH_AWARE
+    return (delta.days * 86400 + delta.seconds) * 1000 + delta.microseconds // 1000
 
 
 def _millis_to_utc_datetime(

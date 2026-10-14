@@ -448,6 +448,21 @@ def test_extended_json_specific_cases():
         assert precise_date_2.microsecond == 16000  # Floored number
 
 
+def test_extended_json_datetime_truncation_consistency_for_distant_years():
+    # Float timestamps lack sub-millisecond precision for such years, so they must not be used
+    for year in (1, 1876, 1970, 2024, 5000, 9999):
+        for microsecond in (0, 1000, 123999, 999990, 999999):
+            date = datetime(year, 12, 31, 23, 59, 59, microsecond, tzinfo=timezone.utc)
+            expected = date.replace(microsecond=microsecond // 1000 * 1000)
+            for canonical_mode in [True, False]:
+                roundtrip_date = convert_from_extjson(convert_to_extjson(date, canonical=canonical_mode))
+                assert roundtrip_date == expected, (canonical_mode, date, roundtrip_date)
+
+    # Upper bound of Python datetimes must not overflow to year 10000
+    max_date = datetime.max.replace(tzinfo=timezone.utc)
+    assert convert_to_extjson(max_date, canonical=True) == {"$date": {"$numberLong": "253402300799999"}}
+
+
 def test_extended_json_undecodable_payloads():
 
     # The presence of other keys blocks extjson decoding
