@@ -240,6 +240,10 @@ def _parse_canonical_datetime(doc: Any) -> datetime.datetime:
     if not isinstance(dtm, (str, int)) or isinstance(dtm, bool):  # Beware, bool is a subclass of int
         raise TypeError(f"Date must be iso string or millisecond int: {doc}")
     if isinstance(dtm, str):
+        if IS_MICROPYTHON and dtm.endswith("Z"):
+            # micropython-lib's datetime.fromisoformat has no "Z" support,
+            # but does parse numeric UTC offsets.
+            dtm = dtm[:-1] + "+00:00"
         res = datetime.datetime.fromisoformat(dtm)
         if not _is_aware_datetime(res):
             raise TypeError(f"Unsupported naive datetime: {dtm}")
@@ -280,9 +284,15 @@ def _parse_canonical_decimal(doc: Any) -> Decimal:
 
 def _parse_legacy_uuid(doc: Any) -> Union[bytes, uuid.UUID]:
     """Decode a JSON legacy $uuid to Python UUID."""
-    if not isinstance(doc["$uuid"], str):
+    hex_str = doc["$uuid"]
+    if not isinstance(hex_str, str):
         raise TypeError(f"$uuid must be a string: {doc}")
-    return uuid.UUID(doc["$uuid"])
+    if IS_MICROPYTHON:
+        # micropython-lib's uuid.UUID stub only accepts a raw 16-byte buffer,
+        # unlike CPython's uuid.UUID which parses hex strings directly.
+        data = binascii.unhexlify(hex_str.replace("-", ""))
+        return uuid.UUID(bytes=data)
+    return uuid.UUID(hex_str)
 
 
 _PARSERS: dict[str, Callable[[Any], Any]] = {
