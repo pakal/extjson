@@ -131,8 +131,13 @@ is left untouched, as `extjson` does not target full MongoDB/BSON compatibility:
 `bytes` and `decimal.Decimal` use the same wrapper in both modes, because Extended JSON has no relaxed
 form for them.
 
-A recognized wrapper with an invalid payload (e.g. `{"$numberInt": 42}`, or a `$binary` subtype other
+A recognized wrapper with a wrongly-typed payload (e.g. `{"$numberInt": 42}`, or a `$binary` subtype other
 than `00`/`04`, such as the legacy UUID subtype `03`) raises `TypeError` on decoding.
+
+A well-typed but malformed payload lets the error of the underlying parser propagate instead: mostly
+`ValueError` and its subclasses (e.g. `{"$numberInt": "1.5"}`, `{"$uuid": "nope"}`, an unparsable `$date`
+string, invalid base64 raising `binascii.Error`), but also `OverflowError` for out-of-range `$date`
+milliseconds, and `decimal.InvalidOperation` for an invalid `$numberDecimal`.
 
 ## Notes and behavior details
 

@@ -533,6 +533,8 @@ def test_extended_json_undecodable_payloads():
         convert_from_extjson({"$numberInt": "1.5"})
     with pytest.raises(decimal.InvalidOperation):
         convert_from_extjson({"$numberDecimal": "abc"})
+    with pytest.raises(OverflowError):
+        convert_from_extjson({"$date": {"$numberLong": "99999999999999999999"}})
 
 
 def test_extended_json_int32_int64_boundaries():

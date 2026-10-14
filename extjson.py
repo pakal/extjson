@@ -377,7 +377,9 @@ def load_from_json_str(data, **extra_options):
     Load a data tree from a json representation as string.
     Supports advanced types like bytes, uuids, dates...
 
-    Raises JSONDecodeError or TypeError on loading/coercion error.
+    Raises TypeError on wrongly-typed Extended JSON wrappers, and lets other errors
+    of the underlying parsers propagate on malformed data (JSONDecodeError and
+    other ValueError subclasses, OverflowError, decimal.InvalidOperation...).
     """
     assert isinstance(data, str), data
     return loads(data, **extra_options)
