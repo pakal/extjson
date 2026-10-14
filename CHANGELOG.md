@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-10-14
+
 ### Breaking changes
 
 - Python 3.11+ is now required (Python 3.10 support dropped).
@@ -58,6 +60,7 @@ Initial release.
 - `dump_to_json_str()` / `load_from_json_str()`, `dump_to_json_bytes()` / `load_from_json_bytes()`
   and `dump_to_json_file()` / `load_from_json_file()` helpers, with `sort_keys=True` by default.
 
-[Unreleased]: https://github.com/pakal/extjson/compare/10877c3...HEAD
+[Unreleased]: https://github.com/pakal/extjson/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/pakal/extjson/compare/10877c3...v0.2.0
 [0.1.1]: https://github.com/pakal/extjson/compare/6dfcb3c...10877c3
 [0.1.0]: https://github.com/pakal/extjson/tree/6dfcb3c
